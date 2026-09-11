@@ -1,0 +1,16 @@
+{
+  "name": "welall-cli-demo",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "workspaces": [
+    "services/contracts",
+    "bootstrap"
+  ],
+  "scripts": {
+    "check": "npm run check --workspace services/contracts && node --test test/*.test.mjs",
+    "generate-env": "node scripts/generate-env.mjs"
+  }
+}

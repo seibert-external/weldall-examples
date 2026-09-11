@@ -1,0 +1,19 @@
+[project]
+name = "weldall-demo-crm"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "weldall-sdk[fastapi]==0.1.0",
+  "uvicorn==0.42.0",
+  "redis==7.3.0",
+  "email-validator==2.3.0",
+]
+
+[dependency-groups]
+dev = ["pytest==9.0.2", "ruff==0.15.7", "httpx==0.28.1"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

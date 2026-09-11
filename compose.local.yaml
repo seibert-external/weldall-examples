@@ -1,0 +1,80 @@
+# Local-only override; never add this file to the Coolify deployment.
+# npm run generate-env -- --local selects both Compose files in .env.local.
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${LOCAL_HTTP_PORT:-80}:80"
+      - "127.0.0.1:${LOCAL_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        aliases:
+          - weldall.seibert.localdev
+          - contracts.seibert.localdev
+          - crm.seibert.localdev
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:2019/config/"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  local-trust:
+    image: caddy:2.10-alpine
+    restart: "no"
+    depends_on:
+      caddy:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for attempt in $$(seq 1 60); do
+          if test -s /caddy-data/caddy/pki/authorities/local/root.crt; then
+            cp /caddy-data/caddy/pki/authorities/local/root.crt /local-ca/root.crt
+            cat /etc/ssl/certs/ca-certificates.crt /local-ca/root.crt > /local-ca/ca-bundle.crt
+            chmod 0444 /local-ca/root.crt /local-ca/ca-bundle.crt
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "Caddy did not create its local CA within 60 seconds" >&2
+        exit 1
+    volumes:
+      - caddy-data:/caddy-data:ro
+      - local-ca:/local-ca
+
+  weldall:
+    depends_on:
+      local-trust:
+        condition: service_completed_successfully
+    environment:
+      NODE_EXTRA_CA_CERTS: /local-ca/root.crt
+    volumes:
+      - local-ca:/local-ca:ro
+
+  contracts:
+    depends_on:
+      local-trust:
+        condition: service_completed_successfully
+    environment:
+      NODE_EXTRA_CA_CERTS: /local-ca/root.crt
+    volumes:
+      - local-ca:/local-ca:ro
+
+  crm:
+    depends_on:
+      local-trust:
+        condition: service_completed_successfully
+    environment:
+      SSL_CERT_FILE: /local-ca/ca-bundle.crt
+    volumes:
+      - local-ca:/local-ca:ro
+
+volumes:
+  caddy-data:
+  caddy-config:
+  local-ca:

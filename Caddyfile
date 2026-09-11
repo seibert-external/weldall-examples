@@ -1,0 +1,15 @@
+{
+	local_certs
+}
+
+weldall.seibert.localdev {
+	reverse_proxy weldall:3000
+}
+
+contracts.seibert.localdev {
+	reverse_proxy contracts:3001
+}
+
+crm.seibert.localdev {
+	reverse_proxy crm:8000
+}

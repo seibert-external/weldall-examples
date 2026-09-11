@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+local-root.crt
+node_modules/
+dist/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.pi-subagents/

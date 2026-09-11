@@ -1,0 +1,162 @@
+# Docker Compose 2.17+ / BuildKit: additional_contexts is used by bootstrap.
+# Pinned to the upstream commit that ships the OIDC login installer (schema migration 0015).
+x-weldall-source: &weldall-source https://github.com/seibert-external/weldall.git#5342db4d491d677346b75f7a6a540f417a32bb44
+x-database-url: &database-url postgresql://weldall:${POSTGRES_PASSWORD:?Run npm run generate-env}@postgres:5432/weldall
+x-redis-url: &redis-url redis://:${REDIS_PASSWORD:?Run npm run generate-env}@redis:6379/0
+
+services:
+  postgres:
+    image: postgres:16.13-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: weldall
+      POSTGRES_USER: weldall
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Required}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U weldall -d weldall"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7.4.8-bookworm
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Required}
+    # Always fsync accepted proofs. Eviction or lost AOF would allow replay.
+    command:
+      [
+        sh,
+        -ec,
+        'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --appendfsync always --maxmemory 128mb --maxmemory-policy noeviction',
+      ]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  weldall:
+    build:
+      context: *weldall-source
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_URL: *database-url
+      WELDALL_DEPLOYMENT_MODE: production
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Required}
+      # Authorizes the one-time /setup wizard; login providers are database rows, not env vars.
+      WELDALL_SETUP_TOKEN: ${WELDALL_SETUP_TOKEN:?Required}
+      WELDALL_SIGNING_PRIVATE_JWK: ${WELDALL_SIGNING_PRIVATE_JWK:?Required}
+      WELDALL_SIGNING_PUBLIC_JWK: ${WELDALL_SIGNING_PUBLIC_JWK:?Required}
+      WELDALL_SIGNING_KID: ${WELDALL_SIGNING_KID:?Required}
+      WELDALL_CREDENTIAL_ENCRYPTION_KEY: ${WELDALL_CREDENTIAL_ENCRYPTION_KEY:?Required}
+      LOG_LEVEL: INFO
+    expose: ["3000"]
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/.well-known/openid-configuration').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 90s
+      retries: 12
+
+  contracts:
+    build:
+      context: .
+      dockerfile: services/contracts/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      CONTRACTS_ORIGIN: ${CONTRACTS_ORIGIN:?Required}
+      CONTRACTS_SIGNING_PRIVATE_JWK: ${CONTRACTS_SIGNING_PRIVATE_JWK:?Required}
+      CONTRACTS_SIGNING_PUBLIC_JWK: ${CONTRACTS_SIGNING_PUBLIC_JWK:?Required}
+      CONTRACTS_SIGNING_KID: ${CONTRACTS_SIGNING_KID:?Required}
+      REDIS_URL: *redis-url
+    expose: ["3001"]
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  crm:
+    build:
+      context: .
+      dockerfile: services/crm/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      CRM_ORIGIN: ${CRM_ORIGIN:?Required}
+      CRM_SIGNING_PRIVATE_JWK: ${CRM_SIGNING_PRIVATE_JWK:?Required}
+      CRM_SIGNING_PUBLIC_JWK: ${CRM_SIGNING_PUBLIC_JWK:?Required}
+      CRM_SIGNING_KID: ${CRM_SIGNING_KID:?Required}
+      DEMO_GROUP_PROVIDER_TOKEN: ${DEMO_GROUP_PROVIDER_TOKEN:?Required}
+      REDIS_URL: *redis-url
+    expose: ["8000"]
+    healthcheck:
+      test:
+        [
+          CMD,
+          python,
+          -c,
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  bootstrap:
+    build:
+      context: .
+      dockerfile: bootstrap/Dockerfile
+      additional_contexts:
+        weldall-source: *weldall-source
+    restart: "no"
+    depends_on:
+      weldall:
+        condition: service_healthy
+      contracts:
+        condition: service_healthy
+      crm:
+        condition: service_healthy
+    environment:
+      POSTGRES_URL: *database-url
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      CONTRACTS_ORIGIN: ${CONTRACTS_ORIGIN:?Required}
+      CRM_ORIGIN: ${CRM_ORIGIN:?Required}
+      DEMO_GROUP_PROVIDER_TOKEN: ${DEMO_GROUP_PROVIDER_TOKEN:?Required}
+      WELDALL_CREDENTIAL_ENCRYPTION_KEY: ${WELDALL_CREDENTIAL_ENCRYPTION_KEY:?Required}
+
+volumes:
+  postgres-data:
+  redis-data:
