@@ -1,3 +1,4 @@
+import json
 import threading
 import time
 from datetime import UTC, datetime, timedelta
@@ -268,8 +269,18 @@ def test_real_id_jag_exchange_and_skill_catalog(monkeypatch):
     auth = {"authorization": f"Bearer {assertion}"}
     response = client.get("/.well-known/weldall-skills", headers=auth)
     assert response.status_code == 200
-    assert response.json()["skills"][0]["id"] == "explore"
-    assert response.json()["skills"][0]["requiredScopes"] == ["crm:read"]
+    skills = response.json()["skills"]
+    assert [skill["id"] for skill in skills] == [
+        "briefing",
+        "contacts",
+        "activity",
+        "pipeline",
+    ]
+    assert all(skill["requiredScopes"] == ["crm:read"] for skill in skills)
+    # Published skills are read by agents; keep them free of demo framing.
+    published = json.dumps(skills)
+    for tell in ["demo", "Demo", "fictional", "Fictional", "mock", "synthetic"]:
+        assert tell not in published, f"skill catalog leaks {tell!r}"
     assert client.get("/.well-known/weldall-skills", headers=auth).status_code == 401
 
 

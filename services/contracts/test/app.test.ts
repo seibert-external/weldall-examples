@@ -138,8 +138,8 @@ test("detail, filtering, related records, friendly authenticated delete preserve
   const get = async (path: string) =>
     (await app.fetch(await app.request(path))).json();
   const before = await get("/api/contracts");
-  assert.equal((await get("/api/contracts?customerId=org-100")).total, 2);
-  assert.equal((await get("/api/contracts?status=draft")).total, 1);
+  assert.equal((await get("/api/contracts?customerId=org-100")).total, 3);
+  assert.equal((await get("/api/contracts?status=draft")).total, 5);
   assert.equal((await get("/api/contracts/ctr-1001/clauses")).items.length, 2);
   assert.equal(
     (await app.fetch(await app.request("/api/contracts/missing"))).status,
@@ -305,8 +305,16 @@ test("real ID-JAG exchange and authenticated skill catalog discovery", async () 
     const catalog = await app.fetch(request.clone());
     assert.equal(catalog.status, 200);
     const body = await catalog.json();
-    assert.equal(body.skills[0].id, "review");
-    assert.deepEqual(body.skills[0].requiredScopes, ["contracts:read"]);
+    assert.deepEqual(
+      body.skills.map((skill: { id: string }) => skill.id),
+      ["overview", "review", "renewals", "by-account"],
+    );
+    for (const skill of body.skills)
+      assert.deepEqual(skill.requiredScopes, ["contracts:read"]);
+    // Published skills are read by agents; keep them free of demo framing.
+    const published = JSON.stringify(body.skills);
+    for (const tell of ["demo", "Demo", "fictional", "Fictional", "mock", "synthetic"])
+      assert.equal(published.includes(tell), false, `skill catalog leaks "${tell}"`);
     assert.equal(body.resource, `${origin}/api`);
     assert.equal((await app.fetch(request)).status, 401);
   } finally {

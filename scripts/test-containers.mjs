@@ -173,9 +173,9 @@ try {
     "PASS Redis: atomic concurrency, expiry, AOF restart persistence.",
   );
 
-  for (const [service, inner, path, publicOrigin] of [
-    ["contracts", 3001, "/api/contracts", environment.CONTRACTS_ORIGIN],
-    ["crm", 8000, "/api/organizations", environment.CRM_ORIGIN],
+  for (const [service, inner, path, publicOrigin, expected] of [
+    ["contracts", 3001, "/api/contracts", environment.CONTRACTS_ORIGIN, 20],
+    ["crm", 8000, "/api/organizations", environment.CRM_ORIGIN, 12],
   ]) {
     const names = [
       "WELDALL_ISSUER",
@@ -239,7 +239,7 @@ try {
     };
     const response = await fetch(`${local}${path}`, { headers });
     assert.equal(response.status, 200);
-    assert.equal((await response.json()).items.length, 3);
+    assert.equal((await response.json()).items.length, expected);
     assert.equal((await fetch(`${local}${path}`, { headers })).status, 401);
     console.log(
       `PASS ${service}: non-root production container, public-origin DPoP read, missing auth and replay denied.`,

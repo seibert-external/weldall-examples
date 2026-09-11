@@ -81,9 +81,9 @@ try {
   assert.equal(group.body[0].ou, "demo-readers");
   console.log("PASS local trust: Python and Node trust Caddy; protected directory reachable over HTTPS.");
 
-  for (const [service, origin, path] of [
-    ["contracts", values.CONTRACTS_ORIGIN, "/api/contracts"],
-    ["crm", values.CRM_ORIGIN, "/api/organizations"],
+  for (const [service, origin, path, expected] of [
+    ["contracts", values.CONTRACTS_ORIGIN, "/api/contracts", 20],
+    ["crm", values.CRM_ORIGIN, "/api/organizations", 12],
   ]) {
     assert.equal(request(`${origin}${path}`).status, 401);
     const device = await generateEs256KeyPair();
@@ -105,7 +105,7 @@ try {
     const options = { headers: { authorization: `DPoP ${accessToken}`, dpop } };
     const result = request(`${origin}${path}`, options);
     assert.equal(result.status, 200);
-    assert.equal(result.body.items.length, 3);
+    assert.equal(result.body.items.length, expected);
     assert.equal(request(`${origin}${path}`, options).status, 401);
     console.log(`PASS local ${service}: real issuer discovery/JWKS, ID-JAG exchange, DPoP read and replay rejection through Caddy.`);
   }
