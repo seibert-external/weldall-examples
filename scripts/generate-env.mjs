@@ -17,6 +17,7 @@ export function generateEnv(template, { local = false } = {}) {
   ])
     values[name] = randomBytes(32).toString("hex");
   values.WELDALL_CREDENTIAL_ENCRYPTION_KEY = randomBytes(32).toString("base64");
+  values.WELDALL_CONNECTOR_KEK = randomBytes(32).toString("base64");
   // Upstream requires base64url from at least 32 random bytes (43-128 characters).
   values.WELDALL_SETUP_TOKEN = randomBytes(32).toString("base64url");
   for (const service of ["WELDALL", "CONTRACTS", "CRM"]) {

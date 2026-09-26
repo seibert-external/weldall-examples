@@ -41,9 +41,11 @@ test("secret generation uses unique keys, safe mode, and refuses overwrite", asy
     assert.match(env.WELDALL_SETUP_TOKEN, /^[A-Za-z0-9_-]{43,128}$/);
     assert.equal(env.WELDALL_SETUP_TOKEN.includes("="), false);
     assert.equal(Buffer.from(env.WELDALL_CREDENTIAL_ENCRYPTION_KEY, "base64").length, 32);
+    assert.equal(Buffer.from(env.WELDALL_CONNECTOR_KEK, "base64").length, 32);
+    assert.notEqual(env.WELDALL_CONNECTOR_KEK, env.WELDALL_CREDENTIAL_ENCRYPTION_KEY);
   }));
 
-test("Compose pins the OIDC-installer revision and drops removed login variables", async () => {
+test("Compose pins Weldall 0.2.0 and drops removed login variables", async () => {
   const compose = await readFile(new URL("../compose.yaml", import.meta.url), "utf8");
   assert.match(
     compose,
@@ -60,6 +62,7 @@ test("Compose pins the OIDC-installer revision and drops removed login variables
   // Weldall's entrypoint requires the encryption key; /setup additionally needs the token.
   assert.ok(compose.includes("WELDALL_SETUP_TOKEN: ${WELDALL_SETUP_TOKEN:?Required}"));
   assert.ok(compose.includes("WELDALL_CREDENTIAL_ENCRYPTION_KEY: ${WELDALL_CREDENTIAL_ENCRYPTION_KEY:?Required}"));
+  assert.ok(compose.includes("WELDALL_CONNECTOR_KEK: ${WELDALL_CONNECTOR_KEK:?Required}"));
 });
 
 test("Compose validates with generated non-live credentials and no host ports", async () =>
