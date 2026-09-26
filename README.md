@@ -34,7 +34,7 @@ before it answers.
 
 | Service | Role | What it shows about a deployment |
 |---|---|---|
-| `weldall` | Authorization server and admin UI, built unmodified from a pinned commit | Upstream runs as one container against PostgreSQL with a public HTTPS origin, an ES256 signing key and a credential-encryption key. Sign-in providers are stored in the database and configured once at `/setup` rather than through environment variables. |
+| `weldall` | Authorization server and admin UI, built unmodified from pinned Weldall 0.2.0 source | Upstream runs as one container against PostgreSQL with a public HTTPS origin, an ES256 signing key, a credential-encryption key and an independent connector key-encryption key. Sign-in providers are stored in the database and configured once at `/setup` rather than through environment variables. |
 | `contracts` | TypeScript/Hono API serving 20 example contracts | The TypeScript resource-server SDK registers a downstream resource, publishes four skills, protects routes with `contracts:read` and rejects replayed DPoP proofs. |
 | `crm` | Python/FastAPI API serving 12 example accounts | The Python SDK, and the group provider interface: the authorization server calls a Token-authenticated directory to resolve group membership. Publishes four skills. |
 | `postgres` | Database | Stores users, grants, resources, skill catalogs and audit records. |
@@ -70,8 +70,8 @@ point back.
 
 - Use a dedicated database. The example records and the reader policy are not suitable for an
   existing instance.
-- Signing keys, the credential-encryption key, the PostgreSQL volume and the Redis volume stay
-  unchanged across deployments.
+- Signing keys, both encryption keys, the PostgreSQL volume and the Redis volume stay unchanged
+  across deployments.
 - Back up PostgreSQL and Redis together. Losing replay history makes already-used proofs reusable.
 - The `demo-readers` group maps every verified email to read-only access. It is an example policy,
   not an identity check. Publish a privacy notice and a retention policy before exposing it.
