@@ -1,6 +1,6 @@
 # Docker Compose 2.17+ / BuildKit: additional_contexts is used by bootstrap.
-# Pinned to Weldall 0.2.0, including managed connectors (schema migration 0017).
-x-weldall-source: &weldall-source https://github.com/seibert-external/weldall.git#3b36ae2aade0d7913c227b3b9f90fa22c41050c2
+# Pinned to Weldall 0.3.0, including managed connectors (schema migration 0017).
+x-weldall-source: &weldall-source https://github.com/seibert-external/weldall.git#cb63b699916d0e86060fd70d3d353b81490e250d
 x-database-url: &database-url postgresql://weldall:${POSTGRES_PASSWORD:?Run npm run generate-env}@postgres:5432/weldall
 x-redis-url: &redis-url redis://:${REDIS_PASSWORD:?Run npm run generate-env}@redis:6379/0
 
