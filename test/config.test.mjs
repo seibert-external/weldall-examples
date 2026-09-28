@@ -45,7 +45,7 @@ test("secret generation uses unique keys, safe mode, and refuses overwrite", asy
     assert.notEqual(env.WELDALL_CONNECTOR_KEK, env.WELDALL_CREDENTIAL_ENCRYPTION_KEY);
   }));
 
-test("Compose pins Weldall 0.3.0 and drops removed login variables", async () => {
+test("Compose pins Weldall 0.5.0 and drops removed login variables", async () => {
   const compose = await readFile(new URL("../compose.yaml", import.meta.url), "utf8");
   assert.match(
     compose,
