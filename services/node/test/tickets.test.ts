@@ -34,3 +34,11 @@ test("native MCP: ticket card view", async () => {
   assert.match(result.content[0].text, /\[intern\]/);
   assert.equal((await rpc("tools/call", { name: "get_ticket", arguments: { key: "SVC-1" } })).result.isError, true);
 });
+
+test("tool text names the demo clock's time, so the SLA is not counted again from the real hour", async () => {
+  const { rpc } = await fixture(createApp, "tickets", new Date("2026-12-03T20:15:00+01:00"));
+  const result = (await rpc("tools/call", { name: "list_tickets", arguments: { open: true } })).result;
+  assert.match(result.content[0].text, /^Stand 03\.12\.26, 11:30 Uhr\./);
+  const ticket = (await rpc("tools/call", { name: "get_ticket", arguments: { key: "SVC-1042" } })).result;
+  assert.match(ticket.content[0].text, /^Stand 03\.12\.26, 11:30 Uhr\./);
+});
