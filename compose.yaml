@@ -1,6 +1,7 @@
 # Docker Compose 2.17+ / BuildKit: additional_contexts is used by bootstrap.
-# Pinned to Weldall 0.5.0, including managed connectors (schema migration 0017).
-x-weldall-source: &weldall-source https://github.com/seibert-external/weldall.git#e1d762ebcc85891ffba37de0991d8fec30c8eb8c
+# Pinned to Weldall 0.7.3 (tag @weldall/weldall@0.7.3): native MCP and MCP Apps,
+# schema migrations up to 0021. The server applies migrations on start.
+x-weldall-source: &weldall-source https://github.com/seibert-external/weldall.git#64b3de458808956b7defd30b4a4a66d31a263577
 x-database-url: &database-url postgresql://weldall:${POSTGRES_PASSWORD:?Run npm run generate-env}@postgres:5432/weldall
 x-redis-url: &redis-url redis://:${REDIS_PASSWORD:?Run npm run generate-env}@redis:6379/0
 
@@ -80,11 +81,12 @@ services:
       retries: 12
 
   contracts:
-    build:
+    build: &node-build
       context: .
-      dockerfile: services/contracts/Dockerfile
+      dockerfile: services/node/Dockerfile
+    command: [contracts]
     restart: unless-stopped
-    depends_on:
+    depends_on: &needs-redis
       redis:
         condition: service_healthy
     environment:
@@ -96,42 +98,86 @@ services:
       REDIS_URL: *redis-url
     expose: ["3001"]
     healthcheck:
-      test:
-        [
-          CMD,
-          node,
-          -e,
-          "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
-        ]
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3001/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 12
 
   crm:
-    build:
-      context: .
-      dockerfile: services/crm/Dockerfile
+    build: *node-build
+    command: [crm]
     restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
+    depends_on: *needs-redis
     environment:
       WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
       CRM_ORIGIN: ${CRM_ORIGIN:?Required}
       CRM_SIGNING_PRIVATE_JWK: ${CRM_SIGNING_PRIVATE_JWK:?Required}
       CRM_SIGNING_PUBLIC_JWK: ${CRM_SIGNING_PUBLIC_JWK:?Required}
       CRM_SIGNING_KID: ${CRM_SIGNING_KID:?Required}
+      REDIS_URL: *redis-url
+    expose: ["8000"]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8000/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  tickets:
+    build: *node-build
+    command: [tickets]
+    restart: unless-stopped
+    depends_on: *needs-redis
+    environment:
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      TICKETS_ORIGIN: ${TICKETS_ORIGIN:?Required}
+      TICKETS_SIGNING_PRIVATE_JWK: ${TICKETS_SIGNING_PRIVATE_JWK:?Required}
+      TICKETS_SIGNING_PUBLIC_JWK: ${TICKETS_SIGNING_PUBLIC_JWK:?Required}
+      TICKETS_SIGNING_KID: ${TICKETS_SIGNING_KID:?Required}
+      REDIS_URL: *redis-url
+    expose: ["3003"]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3003/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  wiki:
+    build: *node-build
+    command: [wiki]
+    restart: unless-stopped
+    depends_on: *needs-redis
+    environment:
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      WIKI_ORIGIN: ${WIKI_ORIGIN:?Required}
+      WIKI_SIGNING_PRIVATE_JWK: ${WIKI_SIGNING_PRIVATE_JWK:?Required}
+      WIKI_SIGNING_PUBLIC_JWK: ${WIKI_SIGNING_PUBLIC_JWK:?Required}
+      WIKI_SIGNING_KID: ${WIKI_SIGNING_KID:?Required}
+      REDIS_URL: *redis-url
+    expose: ["3004"]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3004/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # Python resource server; also the Token-authenticated group provider.
+  mail:
+    build:
+      context: .
+      dockerfile: services/mail/Dockerfile
+    restart: unless-stopped
+    depends_on: *needs-redis
+    environment:
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      MAIL_ORIGIN: ${MAIL_ORIGIN:?Required}
+      MAIL_SIGNING_PRIVATE_JWK: ${MAIL_SIGNING_PRIVATE_JWK:?Required}
+      MAIL_SIGNING_PUBLIC_JWK: ${MAIL_SIGNING_PUBLIC_JWK:?Required}
+      MAIL_SIGNING_KID: ${MAIL_SIGNING_KID:?Required}
       DEMO_GROUP_PROVIDER_TOKEN: ${DEMO_GROUP_PROVIDER_TOKEN:?Required}
       REDIS_URL: *redis-url
     expose: ["8000"]
     healthcheck:
-      test:
-        [
-          CMD,
-          python,
-          -c,
-          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)",
-        ]
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -150,11 +196,20 @@ services:
         condition: service_healthy
       crm:
         condition: service_healthy
+      tickets:
+        condition: service_healthy
+      wiki:
+        condition: service_healthy
+      mail:
+        condition: service_healthy
     environment:
       POSTGRES_URL: *database-url
       WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
       CONTRACTS_ORIGIN: ${CONTRACTS_ORIGIN:?Required}
       CRM_ORIGIN: ${CRM_ORIGIN:?Required}
+      TICKETS_ORIGIN: ${TICKETS_ORIGIN:?Required}
+      WIKI_ORIGIN: ${WIKI_ORIGIN:?Required}
+      MAIL_ORIGIN: ${MAIL_ORIGIN:?Required}
       DEMO_GROUP_PROVIDER_TOKEN: ${DEMO_GROUP_PROVIDER_TOKEN:?Required}
       WELDALL_CREDENTIAL_ENCRYPTION_KEY: ${WELDALL_CREDENTIAL_ENCRYPTION_KEY:?Required}
 

@@ -1,0 +1,53 @@
+.filters { gap: 12px; }
+
+/* Funnel */
+.fn { display: flex; flex-direction: column; gap: 8px; }
+.fn-row { display: grid; grid-template-columns: 112px 1fr 64px; gap: 14px; align-items: center; }
+.fn-label { font-size: 13px; font-weight: 550; }
+.fn-track { display: flex; justify-content: center; }
+.fn-bar { position: relative; display: flex; align-items: center; justify-content: center; height: 30px; border-radius: 6px; transform-origin: center; animation: grow-c .8s cubic-bezier(.2, .7, .2, 1) both; }
+.fn-0 { background: var(--accent-3); }
+.fn-1 { background: color-mix(in srgb, var(--accent) 38%, transparent); }
+.fn-2 { background: color-mix(in srgb, var(--accent) 62%, transparent); }
+.fn-3 { background: var(--accent); }
+.fn-bar.won { background: color-mix(in srgb, var(--success) 75%, transparent); }
+.fn-value { font-size: 12px; font-weight: 650; color: var(--fg); white-space: nowrap; }
+.fn-2 .fn-value, .fn-3 .fn-value, .won .fn-value { color: var(--accent-ink); }
+.won .fn-value { color: #fff; }
+.fn-meta { text-align: right; }
+@keyframes grow-c { from { transform: scaleX(0); } }
+
+/* Deal rows */
+.p-item { grid-template-columns: 34px minmax(0, 1fr) minmax(130px, auto) auto 30px; }
+.p-value { white-space: nowrap; min-width: 96px; }
+.p-ring { position: relative; width: 34px; height: 34px; }
+.p-ring .ring-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+.p-pct { font-size: 10.5px; font-weight: 650; color: var(--fg-2); }
+.p-when { text-align: right; white-space: nowrap; }
+.p-when .small:first-child { font-weight: 600; }
+
+/* Deal detail */
+.stages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.stages li { display: flex; flex-direction: column; gap: 8px; font-size: 12px; color: var(--fg-3); }
+.stage-bar { height: 6px; border-radius: 99px; background: var(--bg-3); }
+.stages li.done .stage-bar { background: var(--accent-2); }
+.stages li.done { color: var(--fg-2); }
+.stages li.current .stage-bar { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.stages li.current { color: var(--fg); font-weight: 650; }
+
+.feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.feed li { display: flex; gap: 12px; position: relative; padding-bottom: 16px; }
+.feed li:not(:last-child)::after { content: ""; position: absolute; left: 13px; top: 30px; bottom: 4px; width: 1px; background: var(--line); }
+.feed p { margin-top: 4px; line-height: 1.55; }
+.feed-icon { flex: none; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); color: var(--fg-2); background: var(--bg); }
+.side-note { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); line-height: 1.55; }
+
+@media (max-width: 600px) {
+  .fn-row { grid-template-columns: 92px 1fr; }
+  .fn-meta { display: none; }
+  .p-item { grid-template-columns: 34px minmax(0, 1fr) 30px; }
+  .p-when { grid-column: 2; text-align: left; }
+  .p-value { display: none; }
+  .p-item .menu { grid-row: 1; grid-column: 3; }
+  .stage-name { font-size: 10.5px; }
+}

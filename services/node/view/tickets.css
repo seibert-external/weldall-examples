@@ -1,0 +1,36 @@
+.t-hero { align-items: center; }
+.pills { margin-top: 12px; flex-wrap: wrap; }
+.sla-clock { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sla-caption { text-align: center; line-height: 1.45; }
+.sla-clock .ring-center strong { font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+.sla-clock .ring-center span { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); margin-top: 2px; }
+
+.desc { margin-top: 8px; line-height: 1.65; }
+.feed-head { border-top: 1px solid var(--line); padding-top: 14px; }
+
+.events { list-style: none; margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 14px; border-left: 1px solid var(--line); }
+.event { position: relative; }
+.event::before { content: ""; position: absolute; left: -19px; top: 6px; width: 9px; height: 9px; border-radius: 50%; background: var(--bg); border: 2px solid var(--line-2); }
+.event p { margin-top: 4px; line-height: 1.55; }
+.event.internal { padding: 10px 12px; border-radius: var(--r-md); background: var(--bg-2); }
+.event.internal::before { top: 16px; }
+.internal-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--fg-3); }
+.event.change::before { width: 7px; height: 7px; left: -18px; border-width: 0; background: var(--line-2); }
+
+.t-item { grid-template-columns: 34px minmax(0, 1fr) minmax(170px, auto) 112px 30px; }
+.t-ring { position: relative; width: 34px; height: 34px; color: var(--fg-2); }
+.t-ring .ring-center { display: flex; align-items: center; justify-content: center; }
+.t-type { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; color: var(--fg-2); }
+.t-when { text-align: right; white-space: nowrap; }
+.t-when .small:first-child { font-weight: 600; }
+.prio { display: inline-flex; align-items: center; gap: 4px; }
+.t-who { color: var(--fg-2); }
+
+@media (max-width: 600px) {
+  .t-hero { grid-template-columns: 1fr; }
+  .sla-clock { flex-direction: row; justify-content: flex-start; }
+  .t-item { grid-template-columns: 34px minmax(0, 1fr) 30px; }
+  .t-when { grid-column: 2; text-align: left; }
+  .t-who { display: none; }
+  .t-item .menu { grid-row: 1; grid-column: 3; }
+}

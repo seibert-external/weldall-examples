@@ -30,7 +30,7 @@ test("secret generation uses unique keys, safe mode, and refuses overwrite", asy
     const privateKeys = [...content.matchAll(/_PRIVATE_JWK='(.+)'/g)].map((x) =>
       JSON.parse(x[1]),
     );
-    assert.equal(new Set(privateKeys.map((x) => x.d)).size, 3);
+    assert.equal(new Set(privateKeys.map((x) => x.d)).size, 6);
     assert.equal(
       privateKeys.every((x) => x.crv === "P-256"),
       true,
@@ -45,11 +45,11 @@ test("secret generation uses unique keys, safe mode, and refuses overwrite", asy
     assert.notEqual(env.WELDALL_CONNECTOR_KEK, env.WELDALL_CREDENTIAL_ENCRYPTION_KEY);
   }));
 
-test("Compose pins Weldall 0.5.0 and drops removed login variables", async () => {
+test("Compose pins Weldall 0.7.3 and drops removed login variables", async () => {
   const compose = await readFile(new URL("../compose.yaml", import.meta.url), "utf8");
   assert.match(
     compose,
-    /&weldall-source https:\/\/github\.com\/seibert-external\/weldall\.git#[0-9a-f]{40}$/m,
+    /&weldall-source https:\/\/github\.com\/seibert-external\/weldall\.git#64b3de458808956b7defd30b4a4a66d31a263577$/m,
   );
   for (const removed of [
     "GOOGLE_CLIENT_ID",
@@ -88,6 +88,9 @@ test("local generator selects mock hosts, isolated Compose, CA trust and loopbac
     assert.equal(env.WELDALL_ISSUER, "https://weldall.seibert.localdev");
     assert.equal(env.CONTRACTS_ORIGIN, "https://contracts.seibert.localdev");
     assert.equal(env.CRM_ORIGIN, "https://crm.seibert.localdev");
+    assert.equal(env.TICKETS_ORIGIN, "https://tickets.seibert.localdev");
+    assert.equal(env.WIKI_ORIGIN, "https://wiki.seibert.localdev");
+    assert.equal(env.MAIL_ORIGIN, "https://mail.seibert.localdev");
     assert.equal(env.COMPOSE_PROJECT_NAME, "welall-cli-demo-local");
     const result = spawnSync("docker", ["compose", "--env-file", path, "config", "--format", "json"], { encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr);
@@ -97,10 +100,11 @@ test("local generator selects mock hosts, isolated Compose, CA trust and loopbac
     assert.ok(config.services.bootstrap);
     assert.deepEqual(config.services.caddy.networks.default.aliases, [
       "weldall.seibert.localdev", "contracts.seibert.localdev", "crm.seibert.localdev",
+      "tickets.seibert.localdev", "wiki.seibert.localdev", "mail.seibert.localdev",
     ]);
     assert.ok(config.services.caddy.ports.every(port => port.host_ip === "127.0.0.1"));
     assert.equal(config.services.weldall.depends_on.postgres.condition, "service_healthy");
-    for (const name of ["weldall", "contracts", "crm"]) {
+    for (const name of ["weldall", "contracts", "crm", "tickets", "wiki", "mail"]) {
       const service = config.services[name];
       assert.equal(service.depends_on["local-trust"].condition, "service_completed_successfully");
       assert.ok(service.volumes.some(volume => volume.source === "local-ca" && volume.read_only));
@@ -109,9 +113,10 @@ test("local generator selects mock hosts, isolated Compose, CA trust and loopbac
     }
     assert.equal(config.services.contracts.environment.NODE_EXTRA_CA_CERTS, "/local-ca/root.crt");
     assert.equal(config.services.weldall.environment.NODE_EXTRA_CA_CERTS, "/local-ca/root.crt");
-    assert.equal(config.services.crm.environment.SSL_CERT_FILE, "/local-ca/ca-bundle.crt");
+    assert.equal(config.services.crm.environment.NODE_EXTRA_CA_CERTS, "/local-ca/root.crt");
+    assert.equal(config.services.mail.environment.SSL_CERT_FILE, "/local-ca/ca-bundle.crt");
     const caddy = await readFile(new URL("../Caddyfile", import.meta.url), "utf8");
-    for (const origin of [env.WELDALL_ISSUER, env.CONTRACTS_ORIGIN, env.CRM_ORIGIN])
+    for (const origin of [env.WELDALL_ISSUER, env.CONTRACTS_ORIGIN, env.CRM_ORIGIN, env.TICKETS_ORIGIN, env.WIKI_ORIGIN, env.MAIL_ORIGIN])
       assert.ok(caddy.includes(`${new URL(origin).hostname} {`));
   }, { local: true }));
 
@@ -140,7 +145,11 @@ test("bootstrap credential format matches upstream AES-GCM envelope; group never
     "weldall:login",
     "contracts:read",
     "crm:read",
+    "tickets:read",
+    "wiki:read",
+    "mail:read",
   ]);
+  assert.equal(DEMO_SCOPES.some((scope) => /administer|iac|statistics/.test(scope)), false);
   const key = Buffer.alloc(32, 3);
   const credential = encryptProviderToken(
     "provider-1",

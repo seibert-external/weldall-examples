@@ -64,6 +64,14 @@ function port(name, inner) {
       .at(-1),
   );
 }
+// [service, port, path, items, Node service argument]
+const SERVICES = [
+  ["contracts", 3001, "/api/contracts", 18, "contracts"],
+  ["crm", 8000, "/api/organizations", 12, "crm"],
+  ["tickets", 3003, "/api/tickets", 13, "tickets"],
+  ["wiki", 3004, "/api/pages", 10, "wiki"],
+  ["mail", 8000, "/api/messages", 12, null],
+];
 try {
   const envFile = join(directory, ".env");
   await writeEnv(envFile);
@@ -77,8 +85,7 @@ try {
       envFile,
       "build",
       "weldall",
-      "contracts",
-      "crm",
+      ...SERVICES.map(([service]) => service),
       "bootstrap",
     ],
     { stdio: "inherit" },
@@ -173,17 +180,15 @@ try {
     "PASS Redis: atomic concurrency, expiry, AOF restart persistence.",
   );
 
-  for (const [service, inner, path, publicOrigin, expected] of [
-    ["contracts", 3001, "/api/contracts", environment.CONTRACTS_ORIGIN, 20],
-    ["crm", 8000, "/api/organizations", environment.CRM_ORIGIN, 12],
-  ]) {
+  for (const [service, inner, path, expected, argument] of SERVICES) {
+    const publicOrigin = environment[`${service.toUpperCase()}_ORIGIN`];
     const names = [
       "WELDALL_ISSUER",
       "REDIS_URL",
       ...Object.keys(environment).filter((x) =>
         x.startsWith(`${service.toUpperCase()}_`),
       ),
-      ...(service === "crm" ? ["DEMO_GROUP_PROVIDER_TOKEN"] : []),
+      ...(service === "mail" ? ["DEMO_GROUP_PROVIDER_TOKEN"] : []),
     ];
     const user = docker([
       "image",
@@ -196,13 +201,13 @@ try {
       user && user !== "root" && user !== "0",
       `${service} must run non-root`,
     );
-    run(`${id}-${service}`, `${id}-${service}`, names, [], [inner]);
+    run(`${id}-${service}`, `${id}-${service}`, names, argument ? [argument] : [], [inner]);
     const command =
-      service === "contracts"
+      argument
         ? [
             "node",
             "-e",
-            "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+            `fetch('http://127.0.0.1:${inner}/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))`,
           ]
         : [
             "python",
@@ -276,8 +281,7 @@ try {
       ...[
         "POSTGRES_URL",
         "WELDALL_ISSUER",
-        "CONTRACTS_ORIGIN",
-        "CRM_ORIGIN",
+        ...SERVICES.map(([service]) => `${service.toUpperCase()}_ORIGIN`),
         "DEMO_GROUP_PROVIDER_TOKEN",
         "WELDALL_CREDENTIAL_ENCRYPTION_KEY",
       ].flatMap((name) => ["-e", name]),
@@ -289,10 +293,7 @@ try {
     "PASS upstream Weldall: production migrations/startup and packaged demo bootstrap on a fresh database.",
   );
   docker(["stop", `${id}-redis`]);
-  for (const [service, inner] of [
-    ["contracts", 3001],
-    ["crm", 8000],
-  ]) {
+  for (const [service, inner] of SERVICES) {
     assert.equal(
       (
         await fetch(
@@ -303,13 +304,13 @@ try {
     );
   }
   console.log(
-    "PASS storage outage: both production health endpoints fail closed.",
+    "PASS storage outage: every production health endpoint fails closed.",
   );
 } finally {
   if (client?.isOpen) client.destroy();
   for (const name of containers.reverse())
     spawnSync("docker", ["rm", "-fv", name], { stdio: "ignore" });
   spawnSync("docker", ["network", "rm", id], { stdio: "ignore" });
-  spawnSync("docker", ["image", "rm", ...["integration", "bootstrap", "weldall", "contracts", "crm"].map(service => `${id}-${service}`)], { stdio: "ignore" });
+  spawnSync("docker", ["image", "rm", ...["integration", "bootstrap", "weldall", ...SERVICES.map(([service]) => service)].map(service => `${id}-${service}`)], { stdio: "ignore" });
   await rm(directory, { recursive: true, force: true });
 }

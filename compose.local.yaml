@@ -17,6 +17,9 @@ services:
           - weldall.seibert.localdev
           - contracts.seibert.localdev
           - crm.seibert.localdev
+          - tickets.seibert.localdev
+          - wiki.seibert.localdev
+          - mail.seibert.localdev
     healthcheck:
       test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:2019/config/"]
       interval: 2s
@@ -66,13 +69,31 @@ services:
       - local-ca:/local-ca:ro
 
   crm:
-    depends_on:
+    depends_on: &trusted
       local-trust:
         condition: service_completed_successfully
     environment:
-      SSL_CERT_FILE: /local-ca/ca-bundle.crt
-    volumes:
+      NODE_EXTRA_CA_CERTS: /local-ca/root.crt
+    volumes: &local-ca
       - local-ca:/local-ca:ro
+
+  tickets:
+    depends_on: *trusted
+    environment:
+      NODE_EXTRA_CA_CERTS: /local-ca/root.crt
+    volumes: *local-ca
+
+  wiki:
+    depends_on: *trusted
+    environment:
+      NODE_EXTRA_CA_CERTS: /local-ca/root.crt
+    volumes: *local-ca
+
+  mail:
+    depends_on: *trusted
+    environment:
+      SSL_CERT_FILE: /local-ca/ca-bundle.crt
+    volumes: *local-ca
 
 volumes:
   caddy-data:

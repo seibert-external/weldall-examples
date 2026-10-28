@@ -7,6 +7,9 @@ export function generateEnv(template, { local = false } = {}) {
     WELDALL_ISSUER: "https://weldall.seibert.localdev",
     CONTRACTS_ORIGIN: "https://contracts.seibert.localdev",
     CRM_ORIGIN: "https://crm.seibert.localdev",
+    TICKETS_ORIGIN: "https://tickets.seibert.localdev",
+    WIKI_ORIGIN: "https://wiki.seibert.localdev",
+    MAIL_ORIGIN: "https://mail.seibert.localdev",
   } : {};
   const values = {};
   for (const name of [
@@ -20,7 +23,7 @@ export function generateEnv(template, { local = false } = {}) {
   values.WELDALL_CONNECTOR_KEK = randomBytes(32).toString("base64");
   // Upstream requires base64url from at least 32 random bytes (43-128 characters).
   values.WELDALL_SETUP_TOKEN = randomBytes(32).toString("base64url");
-  for (const service of ["WELDALL", "CONTRACTS", "CRM"]) {
+  for (const service of ["WELDALL", "CONTRACTS", "CRM", "TICKETS", "WIKI", "MAIL"]) {
     const pair = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
     values[`${service}_SIGNING_KID`] = `${service.toLowerCase()}-demo-1`;
     values[`${service}_SIGNING_PRIVATE_JWK`] = JSON.stringify(
@@ -61,7 +64,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.log(`Created ${destination} with new secrets (mode 0600). Never commit this file.`);
     console.log(local
       ? "Local HTTPS hosts configured. Run docker compose --env-file .env.local up --build after following the README host/CA setup. No OIDC provider is reachable locally, so /setup stays open; see the local-login limitation."
-      : "Set the three origins before deploying, then complete /setup with the operator token and the owner's identity provider.");
+      : "Set the six origins before deploying, then complete /setup with the operator token and the owner's identity provider.");
   } catch (error) {
     console.error(
       error.code === "EEXIST"
