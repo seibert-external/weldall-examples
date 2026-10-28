@@ -67,6 +67,9 @@ export function createApp(
     allowedTools: ["get_ticket", "list_tickets"],
     fallback: "Die Ticketansicht wird geladen. Zeigt dieser Client keine interaktiven Ansichten, steht dasselbe als Text im Chat.",
   });
+  // The demo clock stands at the anchor's time of day (see shared/dates.ts). The text says so, so a model that
+  // knows the real time does not count the SLA again and call every deadline overdue.
+  const asOf = () => `Stand ${time(demoNow(now()).toISOString())} Uhr. SLA-Fristen gelten zu diesem Stand.`;
   const line = (t: ReturnType<typeof enrich>) =>
     `- ${t.key} · ${t.priority} · ${t.status} · ${t.summary}${t.customer ? ` (${t.customer})` : ""} · ${t.assignee ?? "nicht zugewiesen"}${
       t.slaState ? ` · SLA ${t.slaState.clock} ${t.slaState.minutesLeft < 0 ? "überschritten" : `bis ${time(t.slaState.due)}`}` : ""
@@ -83,7 +86,7 @@ export function createApp(
         name: "list_tickets",
         title: "Tickets",
         description:
-          "Listet Tickets, offene zuerst, nach Priorität. Mit SLA-Lage (Reaktion oder Wiederherstellung, Restzeit, überschritten). Filter: open, status, priority, customerId (CRM-ID), assignee, q. Clients mit MCP-App-Unterstützung zeigen Ticketkarten; dann nicht alles wiederholen, sondern die Lage einordnen.",
+          "Listet Tickets, offene zuerst, nach Priorität. Mit SLA-Lage (Reaktion oder Wiederherstellung, Restzeit, überschritten) zum Stand im Ergebnis; nicht mit der eigenen Uhrzeit nachrechnen. Filter: open, status, priority, customerId (CRM-ID), assignee, q. Clients mit MCP-App-Unterstützung zeigen Ticketkarten; dann nicht alles wiederholen, sondern die Lage einordnen.",
         inputSchema: {
           type: "object",
           properties: {
@@ -102,7 +105,7 @@ export function createApp(
         async handler(args) {
           const filter = args as Filter;
           const items = select(filter);
-          return toolResult([`${items.length} Tickets:`, ...items.map(line)].join("\n"), {
+          return toolResult([asOf(), `${items.length} Tickets:`, ...items.map(line)].join("\n"), {
             mode: "list",
             now: demoNow(now()).toISOString(),
             filter,
@@ -114,7 +117,7 @@ export function createApp(
         name: "get_ticket",
         title: "Ticket",
         description:
-          "Ein Ticket mit Beschreibung, Anlage, Vertrag, SLA, Einsatztermin und vollständigem Verlauf (Kommentare, Statuswechsel, Zuweisungen; interne Notizen markiert). Clients mit MCP-App-Unterstützung zeigen eine Ticketkarte.",
+          "Ein Ticket mit Beschreibung, Anlage, Vertrag, SLA, Einsatztermin und vollständigem Verlauf (Kommentare, Statuswechsel, Zuweisungen; interne Notizen markiert). SLA zum Stand im Ergebnis; nicht mit der eigenen Uhrzeit nachrechnen. Clients mit MCP-App-Unterstützung zeigen eine Ticketkarte.",
         inputSchema: {
           type: "object",
           properties: { key: { type: "string", pattern: "^(SVC|IT|svc|it)-\\d+$", description: "Ticketschlüssel, z. B. SVC-1042." } },
@@ -134,7 +137,7 @@ export function createApp(
                 e.kind === "comment" ? `${e.internal ? "[intern] " : ""}${e.text}` : e.kind === "status" ? `Status ${e.from} → ${e.to}` : e.kind === "assign" ? `zugewiesen an ${e.to}` : "erstellt"
               }`,
           );
-          return toolResult([line(item), item.description, ...history].join("\n"), {
+          return toolResult([asOf(), line(item), item.description, ...history].join("\n"), {
             mode: "ticket",
             now: demoNow(now()).toISOString(),
             item,

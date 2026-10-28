@@ -1,8 +1,9 @@
 // Records are written as of the anchor, 28 October 2026 at 11:30 in Germany, and
 // move with the calendar by whole days: dates, timestamps and [[YYYY-MM-DD]] in
-// prose alike. The demo clock stands at 11:30 every day, so a deadline "in 3
-// days" and an SLA with "3:40 h left" read the same on every day and at
-// every hour; a recording made next month tells the same story.
+// prose alike. The demo clock stands at the anchor's time of day every day
+// (11:30, or 12:30 in summer time), so a deadline "in 3 days" and an SLA with
+// "3:40 h left" read the same on every day and at every hour; a recording made
+// next month tells the same story.
 export const ANCHOR = "2026-10-28T10:30:00Z";
 const DAY = 86_400_000;
 

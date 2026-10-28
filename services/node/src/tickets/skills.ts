@@ -19,7 +19,7 @@ Rufe \`list_tickets\` mit \`open: true\` auf. Kritisch ist, was mindestens eines
 - \`slaState.state\` ist \`breached\` (überschritten) oder \`due-soon\` (≤ 4 Stunden),
 - noch niemand zugewiesen.
 
-Nenne je Ticket Schlüssel, Kunde, Anlage, wer dran ist, SLA-Restzeit und den letzten Stand aus dem Verlauf (\`get_ticket\`). Hängt ein Ticket an einem Vertrag (\`contractId\`) mit Gutschrift- oder Vertragsstrafenregel, erwähne das. Zeigt der Client Ticketkarten, fasse zusammen statt alles zu wiederholen.
+Nenne je Ticket Schlüssel, Kunde, Anlage, wer dran ist, SLA-Restzeit und den letzten Stand aus dem Verlauf (\`get_ticket\`). Restzeiten gelten zum Stand, den das Ergebnis in der ersten Zeile nennt; rechne sie nicht mit der eigenen Uhrzeit nach. Hängt ein Ticket an einem Vertrag (\`contractId\`) mit Gutschrift- oder Vertragsstrafenregel, erwähne das. Zeigt der Client Ticketkarten, fasse zusammen statt alles zu wiederholen.
 
 HTTP: \`weldall request --scope tickets:read '${origin}/api/tickets?open=true'\`.`,
   },
