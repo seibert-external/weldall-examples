@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1160 530" width="1160" height="530" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Weldall reference deployment</title>
+  <desc>An employee and their agent call the five demo APIs with tokens from the Weldall authorization server. Weldall stores state in PostgreSQL and resolves groups through the mail service; the APIs keep single-use proofs in Redis.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#5c6570"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #cfd5da; stroke-width: 1.5; }
+      .core { fill: #0c5b6a; stroke: #0c5b6a; }
+      .store { fill: #f5f7f8; stroke: #cfd5da; stroke-width: 1.5; }
+      .t { font-size: 15px; font-weight: 650; fill: #15191e; }
+      .s { font-size: 12.5px; fill: #5c6570; }
+      .tc { font-size: 16px; font-weight: 650; fill: #ffffff; }
+      .sc { font-size: 12.5px; fill: #cfe8ec; }
+      .eyebrow { font-size: 11px; font-weight: 650; letter-spacing: 1.2px; fill: #8d96a0; }
+      .edge { stroke: #5c6570; stroke-width: 1.5; fill: none; }
+      .dash { stroke-dasharray: 5 5; }
+      .label { font-size: 11.5px; fill: #5c6570; }
+    </style>
+  </defs>
+  <rect width="1160" height="530" rx="16" fill="#ffffff"/>
+  <text x="40" y="48" font-size="20" font-weight="650" fill="#15191e">Weldall reference deployment</text>
+  <text x="40" y="72" class="s">Docker Compose project · invented company Brakenstedt Antriebstechnik GmbH · all APIs read-only</text>
+
+  <!-- Client -->
+  <rect class="box" x="40" y="236" width="180" height="88" rx="12"/>
+  <text class="t" x="130" y="272" text-anchor="middle">Employee + agent</text>
+  <text class="s" x="130" y="294" text-anchor="middle">Weldall Client or CLI</text>
+
+  <!-- Weldall -->
+  <rect class="core" x="300" y="226" width="220" height="108" rx="12"/>
+  <text class="tc" x="410" y="270" text-anchor="middle">weldall</text>
+  <text class="sc" x="410" y="292" text-anchor="middle">authorization server</text>
+  <text class="sc" x="410" y="311" text-anchor="middle">and admin UI · 0.7.3</text>
+
+  <!-- Stores -->
+  <rect class="store" x="320" y="430" width="180" height="64" rx="12"/>
+  <text class="t" x="410" y="458" text-anchor="middle">postgres</text>
+  <text class="s" x="410" y="478" text-anchor="middle">users, grants, audit</text>
+  <rect class="store" x="940" y="430" width="180" height="64" rx="12"/>
+  <text class="t" x="1030" y="458" text-anchor="middle">redis</text>
+  <text class="s" x="1030" y="478" text-anchor="middle">single-use DPoP proofs</text>
+  <rect class="store" x="40" y="430" width="180" height="64" rx="12" stroke-dasharray="5 5"/>
+  <text class="t" x="130" y="458" text-anchor="middle">bootstrap</text>
+  <text class="s" x="130" y="478" text-anchor="middle">one-shot: resources, group</text>
+
+  <!-- APIs -->
+  <text class="eyebrow" x="640" y="108">RESOURCE APIS · NATIVE MCP</text>
+  <g>
+    <rect class="box" x="640" y="122" width="250" height="56" rx="10"/>
+    <text class="t" x="660" y="146">contracts</text><text class="s" x="660" y="165">TypeScript · MCP App: deadline radar</text>
+    <rect class="box" x="640" y="190" width="250" height="56" rx="10"/>
+    <text class="t" x="660" y="214">crm</text><text class="s" x="660" y="233">TypeScript · MCP App: pipeline</text>
+    <rect class="box" x="640" y="258" width="250" height="56" rx="10"/>
+    <text class="t" x="660" y="282">tickets</text><text class="s" x="660" y="301">TypeScript · MCP App: SLA ticket card</text>
+    <rect class="box" x="640" y="326" width="250" height="56" rx="10"/>
+    <text class="t" x="660" y="350">wiki</text><text class="s" x="660" y="369">TypeScript · HTTP API</text>
+    <rect class="box" x="640" y="394" width="250" height="56" rx="10"/>
+    <text class="t" x="660" y="418">mail</text><text class="s" x="660" y="437">Python · group provider</text>
+  </g>
+
+  <!-- Edges -->
+  <path class="edge" d="M220 280H296" marker-end="url(#arrow)"/>
+  <text class="label" x="232" y="270">sign-in</text>
+  <path class="edge" d="M410 334V426" marker-end="url(#arrow)"/>
+  <path class="edge dash" d="M220 462H316" marker-end="url(#arrow)"/>
+  <path class="edge" d="M520 262C580 262 590 150 636 150" marker-end="url(#arrow)"/>
+  <path class="edge" d="M520 272C585 272 595 218 636 218" marker-end="url(#arrow)"/>
+  <path class="edge" d="M520 286H636" marker-end="url(#arrow)"/>
+  <path class="edge" d="M520 298C585 298 595 354 636 354" marker-end="url(#arrow)"/>
+  <path class="edge dash" d="M520 312C575 312 585 422 636 422" marker-end="url(#arrow)"/>
+  <text class="label" x="304" y="214">issues tokens (ID-JAG) per API</text>
+  <text class="label" x="540" y="404">groups</text>
+  <path class="edge" d="M890 150C960 150 1030 300 1030 426" marker-end="url(#arrow)"/>
+  <path class="edge" d="M890 436C915 436 912 462 936 462" marker-end="url(#arrow)"/>
+  <path class="edge" d="M890 286C940 286 990 340 1000 426" marker-end="url(#arrow)"/>
+</svg>

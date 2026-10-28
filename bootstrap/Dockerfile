@@ -3,7 +3,7 @@ FROM node:24-bookworm-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY services/contracts/package.json ./services/contracts/package.json
+COPY services/node/package.json ./services/node/package.json
 COPY bootstrap/package.json ./bootstrap/package.json
 RUN npm ci --ignore-scripts --workspace @demo/bootstrap
 COPY --from=weldall-source packages/db/prisma/schema.prisma ./prisma/schema.prisma

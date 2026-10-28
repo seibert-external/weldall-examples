@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 npm ci --ignore-scripts
 npm run check
 (
-  cd services/crm
+  cd services/mail
   uv sync --locked
   uv run ruff format --check .
   uv run ruff check .

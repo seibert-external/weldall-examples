@@ -8,6 +8,9 @@ const env = {
   WELDALL_ISSUER: "https://weldall.example.com",
   CONTRACTS_ORIGIN: "https://contracts.weldall.example.com",
   CRM_ORIGIN: "https://crm.weldall.example.com",
+  TICKETS_ORIGIN: "https://tickets.weldall.example.com",
+  WIKI_ORIGIN: "https://wiki.weldall.example.com",
+  MAIL_ORIGIN: "https://mail.weldall.example.com",
   DEMO_GROUP_PROVIDER_TOKEN: randomBytes(32).toString("hex"),
   WELDALL_CREDENTIAL_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
 };
@@ -55,7 +58,7 @@ try {
   }, env);
   const firstAssignment = await db.groupScopeAssignment.findFirstOrThrow();
   const catalogs = await db.discoveredSkillCatalog.findMany();
-  assert.equal(catalogs.length, 2, "first deploy schedules both skill catalogs");
+  assert.equal(catalogs.length, 5, "first deploy schedules every skill catalog");
   assert.ok(catalogs.every(x => x.nextRefreshAt.getTime() <= Date.now()));
   const first = await db.downstreamResource.findMany({
     orderBy: { key: "asc" },
@@ -70,13 +73,14 @@ try {
   );
   assert.deepEqual(second.map(x => x.version), first.map(x => x.version));
   assert.equal((await db.groupScopeAssignment.findFirstOrThrow()).version, firstAssignment.version);
-  assert.equal(await db.discoveredSkillCatalog.count(), 2);
-  assert.equal(second.length, 2);
-  assert.equal(await db.scope.count(), 4);
+  assert.equal(await db.discoveredSkillCatalog.count(), 5);
+  assert.equal(second.length, 5);
+  assert.equal(await db.scope.count(), 7);
   assert.equal(await db.groupProvider.count(), 1);
+  assert.equal((await db.groupProvider.findFirstOrThrow()).baseUrl, env.MAIL_ORIGIN, "the mail service hosts the directory");
   assert.equal(await db.groupScopeAssignment.count(), 1);
-  assert.equal(await db.resourceRequestPrefix.count(), 2);
-  assert.equal(await db.resourceScope.count(), 2);
+  assert.equal(await db.resourceRequestPrefix.count(), 5);
+  assert.equal(await db.resourceScope.count(), 5);
   const grants = await db.groupScopeGrant.findMany({
     include: { scope: true },
   });

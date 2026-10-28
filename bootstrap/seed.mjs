@@ -1,6 +1,15 @@
 import { createCipheriv, randomBytes } from "node:crypto";
 
-export const DEMO_SCOPES = ["weldall:login", "contracts:read", "crm:read"];
+// The public group reads every demo system; never administration or IaC.
+export const DEMO_SCOPES = ["weldall:login", "contracts:read", "crm:read", "tickets:read", "wiki:read", "mail:read"];
+export const DEMO_SERVICES = [
+  { key: "contracts", name: "Vertragsregister", env: "CONTRACTS_ORIGIN" },
+  { key: "crm", name: "CRM", env: "CRM_ORIGIN" },
+  { key: "tickets", name: "Ticketsystem", env: "TICKETS_ORIGIN" },
+  { key: "wiki", name: "Wiki", env: "WIKI_ORIGIN" },
+  // Also serves the Token-authenticated group directory.
+  { key: "mail", name: "Postfach", env: "MAIL_ORIGIN", groupProvider: true },
+];
 const actor = "weldall-demo-bootstrap";
 
 function origin(value) {
@@ -49,25 +58,17 @@ function assertOwned(row, identity) {
 }
 
 export async function seedDemo(db, env) {
-  const services = [
-    {
-      key: "contracts",
-      name: "Demo Contracts API",
-      origin: origin(env.CONTRACTS_ORIGIN),
-      scope: "contracts:read",
-    },
-    {
-      key: "crm",
-      name: "Demo CRM API",
-      origin: origin(env.CRM_ORIGIN),
-      scope: "crm:read",
-    },
-  ];
+  const services = DEMO_SERVICES.map((service) => ({
+    ...service,
+    origin: origin(env[service.env]),
+    scope: `${service.key}:read`,
+  }));
   if (
     new Set([origin(env.WELDALL_ISSUER), ...services.map((x) => x.origin)])
-      .size !== 3
+      .size !== services.length + 1
   )
-    throw new Error("Weldall and the two APIs require distinct public origins");
+    throw new Error("Weldall and every API require distinct public origins");
+  const providerOrigin = services.find((x) => x.groupProvider).origin;
   const providerId = "weldall-demo-provider";
   const credential = encryptProviderToken(
     providerId,
@@ -196,14 +197,14 @@ export async function seedDemo(db, env) {
         key: "demo-readers",
         name: "Public demo readers",
         adapterType: "management-api-v1",
-        baseUrl: services[1].origin,
+        baseUrl: providerOrigin,
         enabled: true,
         ...credential,
         createdBy: actor,
         updatedBy: actor,
       },
       update: {
-        baseUrl: services[1].origin,
+        baseUrl: providerOrigin,
         enabled: true,
         ...credential,
         version: { increment: 1 },
@@ -231,7 +232,7 @@ export async function seedDemo(db, env) {
       },
       update: grantsChanged ? { version: { increment: 1 }, updatedBy: actor } : {},
     });
-    // Exactly these three scopes, never administration or IaC. No email grants touched.
+    // Exactly DEMO_SCOPES, never administration or IaC. No email grants touched.
     await tx.groupScopeGrant.deleteMany({
       where: { assignmentId: assignment.id, scopeId: { notIn: scopeIds } },
     });

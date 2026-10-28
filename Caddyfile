@@ -13,3 +13,15 @@ contracts.seibert.localdev {
 crm.seibert.localdev {
 	reverse_proxy crm:8000
 }
+
+tickets.seibert.localdev {
+	reverse_proxy tickets:3003
+}
+
+wiki.seibert.localdev {
+	reverse_proxy wiki:3004
+}
+
+mail.seibert.localdev {
+	reverse_proxy mail:8000
+}
