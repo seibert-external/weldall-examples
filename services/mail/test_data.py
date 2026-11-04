@@ -5,7 +5,7 @@ import data_en
 
 # Fields that IDs, links, filters and code read: equal in both languages.
 CODE = re.compile(
-    r"^(id|key|.*Id|.*Ids|status|folder|tags|email|tickets|contracts|deals|receivedAt|read|flagged|size)$"
+    r"^(FOLDERS|id|key|.*Id|.*Ids|status|folder|tags|email|tickets|contracts|deals|receivedAt|read|flagged|size)$"
 )
 STRUCTURED = re.compile(r"^(\d{4}-\d{2}-\d{2}|[A-Z]+-\d+|https?://\S+|\S+@\S+)")
 TOKEN = re.compile(r"\[\[\d{4}-\d{2}-\d{2}\]\]")
