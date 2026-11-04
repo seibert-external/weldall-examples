@@ -126,8 +126,8 @@ export function createApp(
           type: "object",
           properties: {
             open: { type: "boolean", description: "true: nur offene Tickets, false: nur erledigte." },
-            status: { enum: STATUS, description: "German codes in every language: Offen, In Arbeit, Wartet auf Kunde, Geplant, Erledigt." },
-            priority: { enum: PRIORITY, description: "German codes in every language: Kritisch, Hoch, Mittel, Niedrig." },
+            status: { enum: STATUS },
+            priority: { enum: PRIORITY },
             customerId: { type: "string", pattern: "^org-\\d+$" },
             assignee: { enum: DE.TEAM.map((t) => t.name) },
             q: { type: "string", maxLength: 100, description: "Suche in Schlüssel, Titel, Beschreibung, Kunde, Anlage, Labels." },

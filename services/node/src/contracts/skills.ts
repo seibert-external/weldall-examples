@@ -23,7 +23,7 @@ Antworte in drei Gruppen:
 
 Nenne je Vertrag Vertragspartner, Frist mit Datum, Wert und Verantwortliche. Unterscheide Kunden- und Lieferantenverträge (\`direction\`). Zeigt der Client das Fristenradar, wiederhole die Liste nicht, sondern fasse zusammen und empfiehl die nächsten Schritte.
 
-Nur über HTTP: \`weldall request --scope contracts:read '${origin}/api/contracts?endsBefore=<JJJJ>-12-31'\` mit dem laufenden Jahr.`,
+Nur über HTTP: \`weldall request --scope contracts:read '${origin}/api/contracts?endsBefore=<JJJJ>-12-31'\` mit dem laufenden Jahr. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "renewals",
@@ -40,7 +40,7 @@ Nur über HTTP: \`weldall request --scope contracts:read '${origin}/api/contract
 - Prüfe vor einer Empfehlung den Paragraphen „Vergütung und Preisanpassung“: Angekündigte Erhöhungen ändern die Entscheidung.
 - Schreibe Kündigungen nie selbst ab; entwirf sie nur, wenn danach gefragt wird, mit Vertragsnummer, Frist und Zugangsnachweis.
 
-HTTP: \`weldall request --scope contracts:read '${origin}/api/contracts?status=active&deadlineWithinDays=90'\`.`,
+HTTP: \`weldall request --scope contracts:read '${origin}/api/contracts?status=active&deadlineWithinDays=90'\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "review",
@@ -57,7 +57,7 @@ Lade den Vertrag mit \`get_contract\` (ID aus \`list_contracts\`, Suche mit \`q\
 - Tags der Klauseln: frist, preis, haftung, sla, datenschutz, leistung, abnahme.
 - Sag deutlich, wenn eine Frage vom Vertrag nicht beantwortet wird. Das Register ersetzt keine Rechtsberatung.
 
-HTTP: \`weldall request --scope contracts:read ${origin}/api/contracts/{id}\` und \`${origin}/api/contracts/{id}/clauses\`.`,
+HTTP: \`weldall request --scope contracts:read ${origin}/api/contracts/{id}\` und \`${origin}/api/contracts/{id}/clauses\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "by-account",
@@ -72,6 +72,6 @@ HTTP: \`weldall request --scope contracts:read ${origin}/api/contracts/{id}\` un
 
 Fasse laufende Verträge mit Jahreswert, Entwürfe in Verhandlung und beendete Verträge getrennt zusammen. \`related.tickets\` und \`related.deals\` verweisen auf das Ticketsystem und die Vertriebspipeline im CRM; nutze sie für ein vollständiges Bild, wenn du dort lesen darfst.
 
-HTTP: \`weldall request --scope contracts:read '${origin}/api/contracts?customerId=org-200'\`.`,
+HTTP: \`weldall request --scope contracts:read '${origin}/api/contracts?customerId=org-200'\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
 ];
