@@ -45,6 +45,13 @@ ticket names its contract, a mail points to its ticket, contract and deal.
 
 The four Node services share one image (`services/node`); the container argument picks the service.
 
+The data exists in German and English with the same records, IDs, figures and dates. Every MCP tool
+takes `language` (`de` by default, `en`); the model passes the language the user writes in, and the
+text result, the records and the view follow it. HTTP routes take `?lang=en`. Codes that filters use
+stay German in both languages (ticket status and priority, pipeline stage IDs, wiki space keys, mail
+folders); views and English text results show English labels for them. Skills and tool descriptions
+are German.
+
 Dates move with the calendar so the demo does not age. Records are written as of 28 October 2026 and
 move by whole days, and the demo clock stands at 11:30 every day: a deadline "in 3 days" and an SLA
 with 3:40 h left read the same on any day and at any hour.

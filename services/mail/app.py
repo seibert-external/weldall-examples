@@ -4,7 +4,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 from weldall.adapters.fastapi import init_weldall
 
-from data import FOLDERS, MAILBOX, MESSAGES
+import data
+import data_en
 from dates import shift, shift_all, utc_now
 from provider import provider_router
 from replay import RedisReplayStore
@@ -28,7 +29,9 @@ def skills(origin):
                 "worum es geht, bis wann und wer aus dem Team zuständig ist (Empfänger).\n"
                 "related verweist auf Verträge (contracts), Tickets und Verkaufschancen (deals); "
                 "prüfe sie dort, wenn du Zugriff hast, statt Fristen aus dem Mailtext zu übernehmen.\n"
-                "Schlage zu jeder wichtigen Nachricht eine kurze Antwort vor, sende aber nichts."
+                "Schlage zu jeder wichtigen Nachricht eine kurze Antwort vor, sende aber nichts.\n"
+                "Schreibt der Nutzer Englisch, hänge lang=en an jede Abfrage an; die Nachrichten "
+                "kommen dann auf Englisch, die Ordnernamen bleiben Posteingang und Gesendet."
             ),
             "meta": {"tags": ["start", "postfach", "vertrieb"], **owner},
         },
@@ -43,11 +46,16 @@ def skills(origin):
                 "(CRM-Organisations-ID) oder mit ?q=<text> in Betreff, Absender und Text.\n"
                 "Ergebnisse sind neueste zuerst und enthalten einen Auszug; lies die vollständige Nachricht "
                 "über die ID. Gesendete Antworten liegen im Ordner Gesendet.\n"
-                "Zitiere Fristen und Zusagen aus dem Text wörtlich mit Datum der Nachricht."
+                "Zitiere Fristen und Zusagen aus dem Text wörtlich mit Datum der Nachricht.\n"
+                "Schreibt der Nutzer Englisch, hänge lang=en an jede Abfrage an."
             ),
             "meta": {"tags": ["postfach", "kunden"], **owner},
         },
     ]
+
+
+def lang_of(value):
+    return "en" if value == "en" else "de"
 
 
 def create_app(config, redis, now=utc_now):
@@ -80,16 +88,23 @@ def create_app(config, redis, now=utc_now):
     weldall.register_routes(app)
     app.include_router(provider_router(redis, config["provider_token"]))
     protected = [Depends(weldall.require_auth({"scopes": ["mail:read"]}))]
+    # ?lang=en picks the English data, anything else German. Folder values stay
+    # German codes in both languages because the folder filter uses them.
+    datasets = {"de": data, "en": data_en}
     cache = {}
 
-    def messages():
-        key = shift(now())
-        if key not in cache:
+    def messages(lang):
+        days = shift(now())
+        if cache.get("days") != days:
             cache.clear()
-            cache[key] = sorted(
-                shift_all(MESSAGES, key), key=lambda m: m["receivedAt"], reverse=True
+            cache["days"] = days
+        if lang not in cache:
+            cache[lang] = sorted(
+                shift_all(datasets[lang].MESSAGES, days, lang),
+                key=lambda m: m["receivedAt"],
+                reverse=True,
             )
-        return cache[key]
+        return cache[lang]
 
     def summary(message):
         text = " ".join(message["body"].split())
@@ -112,17 +127,18 @@ def create_app(config, redis, now=utc_now):
             return JSONResponse({"status": "unavailable"}, status_code=503)
 
     @app.get("/api/mailbox", dependencies=protected)
-    def mailbox():
-        items = messages()
+    def mailbox(lang: str = "de"):
+        lang = lang_of(lang)
+        items = messages(lang)
         return {
-            **MAILBOX,
+            **datasets[lang].MAILBOX,
             "folders": [
                 {
                     "name": folder,
                     "total": sum(m["folder"] == folder for m in items),
                     "unread": sum(m["folder"] == folder and not m["read"] for m in items),
                 }
-                for folder in FOLDERS
+                for folder in datasets[lang].FOLDERS
             ],
         }
 
@@ -133,11 +149,12 @@ def create_app(config, redis, now=utc_now):
         customerId: str | None = None,  # noqa: N803 - matches the other APIs
         unread: bool | None = None,
         flagged: bool | None = None,
+        lang: str = "de",
     ):
         needle = q.lower()
         items = [
             summary(m)
-            for m in messages()
+            for m in messages(lang_of(lang))
             if (folder is None or m["folder"] == folder)
             and (customerId is None or m["customerId"] == customerId)
             and (unread is None or (not m["read"]) == unread)
@@ -147,17 +164,27 @@ def create_app(config, redis, now=utc_now):
         return {"items": items, "total": len(items)}
 
     @app.get("/api/messages/{item_id}", dependencies=protected)
-    def message(item_id: str):
-        item = next((m for m in messages() if m["id"] == item_id), None)
+    def message(item_id: str, lang: str = "de"):
+        lang = lang_of(lang)
+        item = next((m for m in messages(lang) if m["id"] == item_id), None)
         if item is None:
-            raise HTTPException(status_code=404, detail="Keine Nachricht mit dieser ID.")
+            raise HTTPException(
+                status_code=404,
+                detail="No message with this ID."
+                if lang == "en"
+                else "Keine Nachricht mit dieser ID.",
+            )
         return {"item": item}
 
     @app.get("/api/threads/{thread_id}", dependencies=protected)
-    def thread(thread_id: str):
-        items = [m for m in reversed(messages()) if m["threadId"] == thread_id]
+    def thread(thread_id: str, lang: str = "de"):
+        lang = lang_of(lang)
+        items = [m for m in reversed(messages(lang)) if m["threadId"] == thread_id]
         if not items:
-            raise HTTPException(status_code=404, detail="Kein Verlauf mit dieser ID.")
+            raise HTTPException(
+                status_code=404,
+                detail="No thread with this ID." if lang == "en" else "Kein Verlauf mit dieser ID.",
+            )
         return {"items": items}
 
     @app.api_route(

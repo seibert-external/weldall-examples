@@ -1,13 +1,17 @@
 import type { ReplayStore } from "@weldall/sdk";
 import { createNativeMcp } from "@weldall/sdk/mcp/server";
 import type { ServiceConfig } from "../shared/config.js";
-import { addMonths, ANCHOR, daysBetween, demoNow, germanDate, isoDay, shifted } from "../shared/dates.js";
+import { addMonths, ANCHOR, daysBetween, demoNow, isoDay, localDate, shifted } from "../shared/dates.js";
+import { type Lang, LANGUAGE, langOf, langQuery, money, tr } from "../shared/lang.js";
 import { createService, includes, notFound } from "../shared/service.js";
 import { toolError, toolResult, viewAssets } from "../shared/ui.js";
-import { contracts as raw, type Contract } from "./data.js";
+import { contracts as DE, type Contract as GermanContract } from "./data.js";
+import { contracts as EN, type Contract as EnglishContract } from "./data.en.js";
 import { contractSkills } from "./skills.js";
 
 const SCOPE = "contracts:read";
+
+type Contract = GermanContract | EnglishContract;
 
 export type Deadline = {
   date: string;
@@ -17,7 +21,7 @@ export type Deadline = {
 };
 
 /** Derived facts the register does not store: deadlines relative to today. */
-export function enrich(contract: Contract, today: string) {
+export function enrich<C extends Contract>(contract: C, today: string, lang: Lang = "de") {
   const { notice, renewal, endsOn } = contract;
   const noticeDeadline = !notice
     ? null
@@ -28,10 +32,10 @@ export function enrich(contract: Contract, today: string) {
   const missed = running && noticeDeadline !== null && noticeDeadline < today;
   const renewedUntil = missed && renewal.automatic ? addMonths(endsOn, renewal.months ?? 12) : null;
   const deadlines: Deadline[] = [
-    ...(noticeDeadline ? [{ date: noticeDeadline, label: "Kündigungsfrist", kind: "notice" as const }] : []),
+    ...(noticeDeadline ? [{ date: noticeDeadline, label: tr(lang, "Kündigungsfrist", "Notice deadline"), kind: "notice" as const }] : []),
     ...contract.milestones.map((m) => ({ ...m, kind: "milestone" as const })),
-    { date: endsOn, label: renewedUntil ? "Ende der Laufzeit" : "Vertragsende", kind: "end" as const },
-    ...(renewedUntil ? [{ date: renewedUntil, label: "Ende der Verlängerung", kind: "renewal" as const }] : []),
+    { date: endsOn, label: renewedUntil ? tr(lang, "Ende der Laufzeit", "End of term") : tr(lang, "Vertragsende", "Contract end"), kind: "end" as const },
+    ...(renewedUntil ? [{ date: renewedUntil, label: tr(lang, "Ende der Verlängerung", "End of renewal"), kind: "renewal" as const }] : []),
   ]
     .map((d) => ({ ...d, days: daysBetween(today, d.date) }))
     .sort((a, b) => a.date.localeCompare(b.date));
@@ -46,17 +50,19 @@ export function enrich(contract: Contract, today: string) {
       : !next
         ? "none"
         : next.days <= 14 ? "critical" : next.days <= 60 ? "soon" : next.days <= 120 ? "planned" : "later";
-  const situation = situationText(contract, today, noticeDeadline, renewedUntil, next);
+  const situation = (lang === "en" ? situationEn : situationDe)(contract, today, noticeDeadline, renewedUntil, next);
   return { ...contract, noticeDeadline, renewedUntil, deadlines, nextDeadline: next, urgency, situation };
 }
 
-function situationText(
+type Situation = (
   c: Contract,
   today: string,
   noticeDeadline: string | null,
   renewedUntil: string | null,
   next: Deadline | null,
-): string {
+) => string;
+
+const situationDe: Situation = (c, today, noticeDeadline, renewedUntil, next) => {
   if (c.status === "draft") return `Entwurf, noch nicht unterzeichnet. Geplanter Beginn am [[${c.startsOn}]].`;
   if (c.status === "expired") return `Beendet zum [[${c.endsOn}]].`;
   if (renewedUntil)
@@ -68,7 +74,23 @@ function situationText(
       ? `Kündigung bis [[${noticeDeadline}]] möglich, sonst Verlängerung um ${c.renewal.months} Monate.`
       : `Endet am [[${c.endsOn}]]. Über eine Fortsetzung muss bis [[${noticeDeadline}]] entschieden werden.`;
   return `Endet am [[${c.endsOn}]] ohne Verlängerung. Ein Anschlussvertrag ist nötig.`;
-}
+};
+
+const situationEn: Situation = (c, today, noticeDeadline, renewedUntil, next) => {
+  if (c.status === "draft") return `Draft, not yet signed. Planned start on [[${c.startsOn}]].`;
+  if (c.status === "expired") return `Ended on [[${c.endsOn}]].`;
+  if (renewedUntil)
+    return `Notice deadline of [[${noticeDeadline!}]] has passed. The contract renews automatically until [[${renewedUntil}]].`;
+  if (next?.kind === "milestone")
+    return `${next.label}: [[${next.date}]] (${next.days === 0 ? "today" : `in ${next.days} days`}).`;
+  if (noticeDeadline && noticeDeadline >= today)
+    return c.renewal.automatic
+      ? `Notice possible until [[${noticeDeadline}]], otherwise the contract renews for ${c.renewal.months} months.`
+      : `Ends on [[${c.endsOn}]]. A decision on continuing it is due by [[${noticeDeadline}]].`;
+  return `Ends on [[${c.endsOn}]] without renewal. A follow-on contract is needed.`;
+};
+
+type Enriched = ReturnType<typeof enrich<Contract>>;
 
 export type Filter = {
   status?: string;
@@ -79,21 +101,22 @@ export type Filter = {
   deadlineWithinDays?: number;
 };
 
-const money = (value: number) =>
-  new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
-
 export function createApp(
   config: ServiceConfig,
   replay: ReplayStore,
   ping: () => Promise<unknown>,
   now: () => Date = () => new Date(),
 ) {
-  // Deadlines are derived once at the anchor and move with the rest.
-  const all = shifted(raw.map((c) => enrich(c, ANCHOR.slice(0, 10))), now);
+  // Deadlines are derived once at the anchor, per language, and move with the rest.
+  const anchor = ANCHOR.slice(0, 10);
+  const data = {
+    de: shifted<Enriched[]>(DE.map((c) => enrich(c, anchor, "de")), now, "de"),
+    en: shifted<Enriched[]>(EN.map((c) => enrich(c, anchor, "en")), now, "en"),
+  };
   const today = () => isoDay(demoNow(now()));
-  const find = (id: string) => all().find((c) => c.id === id);
-  const select = (f: Filter) =>
-    all()
+  const find = (lang: Lang, id: string) => data[lang]().find((c) => c.id === id);
+  const select = (lang: Lang, f: Filter) =>
+    data[lang]()
       .filter(
         (c) =>
           (!f.status || c.status === f.status) &&
@@ -123,12 +146,13 @@ export function createApp(
       endsBefore: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Nur Verträge, deren Laufzeit bis zu diesem Datum endet (YYYY-MM-DD)." },
       deadlineWithinDays: { type: "integer", minimum: 0, maximum: 730, description: "Nur Verträge mit der nächsten Frist innerhalb dieser Tage." },
       q: { type: "string", maxLength: 100, description: "Suche in Titel, Vertragspartner, Nummer und Zusammenfassung." },
+      language: LANGUAGE,
     },
     additionalProperties: false,
   } as const;
 
-  const line = (c: ReturnType<typeof enrich>) =>
-    `- ${c.id} · ${c.number} · ${c.title} (${c.counterparty}) · ${c.status} · Ende ${germanDate(c.endsOn)} · ${money(c.value)} ${c.valueBasis} · ${c.situation}`;
+  const line = (lang: Lang, c: Enriched) =>
+    `- ${c.id} · ${c.number} · ${c.title} (${c.counterparty}) · ${c.status} · ${tr(lang, "Ende", "ends")} ${localDate(c.endsOn, lang)} · ${money(c.value, lang)} ${c.valueBasis} · ${c.situation}`;
 
   const mcp = createNativeMcp({
     path: "/api/mcp",
@@ -147,11 +171,13 @@ export function createApp(
         annotations: { readOnlyHint: true, openWorldHint: false },
         _meta: { ui: { resourceUri: view.uri } },
         async handler(args) {
-          const filter = args as Filter;
-          const items = select(filter);
+          const { language, ...filter } = args as Filter & { language?: string };
+          const lang = langOf(language);
+          const items = select(lang, filter);
+          const head = tr(lang, `${items.length} Verträge, Stand ${localDate(today(), lang)}:`, `${items.length} contracts as of ${localDate(today(), lang)}:`);
           return toolResult(
-            [`${items.length} Verträge, Stand ${germanDate(today())}:`, ...items.map(line)].join("\n"),
-            { mode: "portfolio", today: today(), filter, items },
+            [head, ...items.map((c) => line(lang, c))].join("\n"),
+            { mode: "portfolio", language: lang, today: today(), filter, items },
           );
         },
       },
@@ -162,7 +188,10 @@ export function createApp(
           "Ein Vertrag mit allen Klauseln, Fristen, Verlängerungsregel, Verantwortlichen und verknüpften Tickets und Verkaufschancen. Klauseln wörtlich zitieren, keine Rechtsberatung. Clients mit MCP-App-Unterstützung zeigen ein Dossier mit Fristen-Zeitachse und hervorgehobenen Klauseln.",
         inputSchema: {
           type: "object",
-          properties: { id: { type: "string", pattern: "^ctr-\\d{4}$", description: "Vertrags-ID aus list_contracts, z. B. ctr-1003." } },
+          properties: {
+            id: { type: "string", pattern: "^ctr-\\d{4}$", description: "Vertrags-ID aus list_contracts, z. B. ctr-1003." },
+            language: LANGUAGE,
+          },
           required: ["id"],
           additionalProperties: false,
         },
@@ -170,12 +199,13 @@ export function createApp(
         annotations: { readOnlyHint: true, openWorldHint: false },
         _meta: { ui: { resourceUri: view.uri } },
         async handler(args) {
-          const item = find(String(args.id));
-          if (!item) return toolError(`Es gibt keinen Vertrag mit der ID ${String(args.id)}.`);
+          const lang = langOf(args.language);
+          const item = find(lang, String(args.id));
+          if (!item) return toolError(tr(lang, `Es gibt keinen Vertrag mit der ID ${String(args.id)}.`, `There is no contract with the ID ${String(args.id)}.`));
           const clauses = item.clauses.map((c) => `${c.number} ${c.heading}: ${c.text}`);
           return toolResult(
-            [line(item), item.summary, ...clauses].join("\n"),
-            { mode: "dossier", today: today(), item },
+            [line(lang, item), item.summary, ...clauses].join("\n"),
+            { mode: "dossier", language: lang, today: today(), item },
           );
         },
       },
@@ -196,7 +226,7 @@ export function createApp(
   assets.register(app);
   app.get("/api/contracts", read, (c) => {
     const days = c.req.query("deadlineWithinDays");
-    const items = select({
+    const items = select(langQuery(c), {
       status: c.req.query("status"),
       direction: c.req.query("direction"),
       customerId: c.req.query("customerId"),
@@ -207,11 +237,11 @@ export function createApp(
     return c.json({ today: today(), items, total: items.length });
   });
   app.get("/api/contracts/:id", read, (c) => {
-    const item = find(c.req.param("id"));
+    const item = find(langQuery(c), c.req.param("id"));
     return item ? c.json({ item }) : c.json(notFound, 404);
   });
   app.get("/api/contracts/:id/clauses", read, (c) => {
-    const item = find(c.req.param("id"));
+    const item = find(langQuery(c), c.req.param("id"));
     return item ? c.json({ items: item.clauses }) : c.json(notFound, 404);
   });
   readOnly("/api/contracts/:id");

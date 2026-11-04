@@ -1,3 +1,5 @@
+import type { Lang } from "./lang.js";
+
 // Records are written as of the anchor, 28 October 2026 at 11:30 in Germany, and
 // move with the calendar by whole days: dates, timestamps and [[YYYY-MM-DD]] in
 // prose alike. The demo clock stands at the anchor's time of day every day
@@ -31,27 +33,33 @@ export function addMonths(iso: string, months: number): string {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-export const germanDate = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** Deep copy moved by `days`; [[YYYY-MM-DD]] in prose becomes a German date. */
-export function shiftAll<T>(value: T, days: number): T {
+/** 31.12.2026 in German, 31 Dec 2026 in English. */
+export const localDate = (iso: string, lang: Lang = "de") =>
+  lang === "en"
+    ? `${Number(iso.slice(8, 10))} ${MONTHS[Number(iso.slice(5, 7)) - 1]} ${iso.slice(0, 4)}`
+    : `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+
+/** Deep copy moved by `days`; [[YYYY-MM-DD]] in prose becomes a date in `lang`. */
+export function shiftAll<T>(value: T, days: number, lang: Lang = "de"): T {
   if (typeof value === "string") {
     if (TIMESTAMP.test(value)) return new Date(Date.parse(value) + days * DAY).toISOString().replace(".000Z", "Z") as T;
     if (DATE.test(value)) return addDays(value, days) as T;
-    return value.replace(TOKEN, (_, iso: string) => germanDate(addDays(iso, days))) as T;
+    return value.replace(TOKEN, (_, iso: string) => localDate(addDays(iso, days), lang)) as T;
   }
-  if (Array.isArray(value)) return value.map((item) => shiftAll(item, days)) as T;
+  if (Array.isArray(value)) return value.map((item) => shiftAll(item, days, lang)) as T;
   if (value && typeof value === "object")
-    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, shiftAll(item, days)])) as T;
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, shiftAll(item, days, lang)])) as T;
   return value;
 }
 
 /** The current dataset, recomputed once per day. */
-export function shifted<T>(raw: T, now: () => Date) {
+export function shifted<T>(raw: T, now: () => Date, lang: Lang = "de") {
   let cached: { days: number; data: T } | undefined;
   return () => {
     const days = daysSinceAnchor(now());
-    if (cached?.days !== days) cached = { days, data: shiftAll(raw, days) };
+    if (cached?.days !== days) cached = { days, data: shiftAll(raw, days, lang) };
     return cached.data;
   };
 }

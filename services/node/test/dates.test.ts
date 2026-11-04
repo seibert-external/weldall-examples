@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { addMonths, demoNow, shiftAll } from "../src/shared/dates.js";
+import { addMonths, demoNow, localDate, shiftAll } from "../src/shared/dates.js";
 
 test("everything moves by whole days; tokens become German dates; notice months keep month-ends", () => {
   const value = { end: "2026-12-31", at: "2026-10-27T15:10:00+01:00", text: "bis [[2026-10-31]]" };
@@ -12,4 +12,10 @@ test("everything moves by whole days; tokens become German dates; notice months 
 test("the demo clock stands at the anchor's time of day", () => {
   assert.equal(demoNow(new Date("2027-02-10T22:45:00Z")).toISOString(), "2027-02-10T10:30:00.000Z");
   assert.equal(demoNow(new Date("2026-01-01T00:00:00Z")).toISOString(), "2026-10-28T10:30:00.000Z");
+});
+
+test("tokens become English dates in English", () => {
+  assert.deepEqual(shiftAll({ text: "by [[2026-10-31]]" }, 61, "en"), { text: "by 31 Dec 2026" });
+  assert.equal(localDate("2027-02-06", "en"), "6 Feb 2027");
+  assert.equal(localDate("2027-02-06"), "06.02.2027");
 });
