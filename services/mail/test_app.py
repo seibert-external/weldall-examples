@@ -141,6 +141,48 @@ def test_dates_move_with_the_calendar():
     assert kornfeld["receivedAt"].startswith("2027-02-02")
 
 
+def test_english_with_lang_en_and_german_by_default(fixture):
+    from datetime import date
+
+    from dates import shift
+
+    client, headers, _ = fixture
+
+    def get(path):
+        response = client.get(path, headers=headers(path))
+        assert response.status_code == 200
+        return response.json()
+
+    path = "/api/messages?folder=Posteingang&customerId=org-300&lang=en"
+    items = get(path)["items"]
+    assert items[0]["id"] == "msg-1017"
+    assert items[0]["subject"] == "RE: Maintenance contract renewal: deadline this week"
+    assert items[0]["folder"] == "Posteingang"
+    deadline = date(2026, 10, 31) + timedelta(days=shift(datetime.now(UTC)))
+    english = get("/api/messages/msg-1017?lang=en")["item"]["body"]
+    assert f"notice by {deadline.day} {deadline:%b %Y}" in english
+    german = get("/api/messages/msg-1017")["item"]
+    assert german["subject"] == "AW: Verlängerung Wartungsvertrag – Frist diese Woche"
+    assert f"{deadline:%d.%m.%Y}" in german["body"]
+    assert get("/api/messages/msg-1017?lang=fr")["item"]["subject"] == german["subject"]
+    mailbox = get("/api/mailbox?lang=en")
+    assert mailbox["name"] == "Brakenstedt Sales"
+    assert [f["name"] for f in mailbox["folders"]] == ["Posteingang", "Gesendet"]
+    assert mailbox["folders"] == get("/api/mailbox")["folders"]
+    path = "/api/threads/missing?lang=en"
+    assert client.get(path, headers=headers(path)).json()["detail"] == "No thread with this ID."
+
+
+def test_english_dates_have_no_leading_zero():
+    from datetime import date
+
+    from dates import local_date, shift_all
+
+    assert local_date(date(2026, 12, 31), "en") == "31 Dec 2026"
+    assert shift_all("by [[2026-10-31]]", 98, "en") == "by 6 Feb 2027"
+    assert shift_all("by [[2026-10-31]]", 98) == "by 06.02.2027"
+
+
 def test_write_is_authenticated_friendly_and_does_not_mutate(fixture):
     client, headers, _ = fixture
     path = "/api/messages/msg-1018"

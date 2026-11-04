@@ -89,3 +89,33 @@ test("only HTTPS origins accepted", () => {
   for (const value of ["http://example.com", "https://a.example/", "https://a.example/path"])
     assert.throws(() => publicOrigin(value));
 });
+
+test("English: tools and HTTP return English records and text; German stays the default", async () => {
+  const { get, rpc } = await fixture(createApp, "contracts");
+  const listed = (await rpc("tools/call", { name: "list_contracts", arguments: { deadlineWithinDays: 30, language: "en" } })).result;
+  assert.equal(listed.structuredContent.language, "en");
+  assert.deepEqual(listed.structuredContent.filter, { deadlineWithinDays: 30 });
+  assert.deepEqual(listed.structuredContent.items.map((c: any) => c.id), ["ctr-1005", "ctr-2002", "ctr-2003"]);
+  const text = listed.content[0].text;
+  assert.match(text, /^3 contracts as of 28 Oct 2026:/);
+  assert.match(text, /ctr-1005 · V-2021-008 · Maintenance contract for milling and conveying plant .* ends 30 Nov 2026 · €21,600 annual · Notice possible until 31 Oct 2026, otherwise the contract renews for 12 months\./);
+  const ctr1005 = listed.structuredContent.items[0];
+  assert.equal(ctr1005.nextDeadline.label, "Notice deadline");
+
+  const dossier = (await rpc("tools/call", { name: "get_contract", arguments: { id: "ctr-1001", language: "en" } })).result;
+  assert.equal(dossier.structuredContent.language, "en");
+  assert.match(dossier.structuredContent.item.situation, /^Notice deadline of 30 Sept? 2026 has passed\. The contract renews automatically until 31 Dec 2027\.$/);
+  const missing = (await rpc("tools/call", { name: "get_contract", arguments: { id: "ctr-9999", language: "en" } })).result;
+  assert.equal(missing.content[0].text, "There is no contract with the ID ctr-9999.");
+
+  const german = (await rpc("tools/call", { name: "list_contracts", arguments: { deadlineWithinDays: 30 } })).result;
+  assert.equal(german.structuredContent.language, "de");
+  assert.match(german.content[0].text, /^3 Verträge, Stand 28\.10\.2026:/);
+  assert.match(german.content[0].text, /Ende 30\.11\.2026 · 21\.600\s€ jährlich · Kündigung bis 31\.10\.2026/);
+
+  const http = await get("/api/contracts/ctr-1008?lang=en");
+  assert.equal(http.item.nextDeadline.label, "Exercise conversion option");
+  assert.equal(http.item.valueBasis, "one-off");
+  assert.equal((await get("/api/contracts/ctr-1008")).item.nextDeadline.label, "Übernahmeoption ausüben");
+  assert.equal((await get("/api/contracts?lang=en&direction=supplier")).total, 5);
+});

@@ -15,6 +15,8 @@ Das Wiki enthält Prozesse und Richtlinien: Eskalation und SLA (Bereich SVC), Pr
 2. Lesen: \`weldall request --scope wiki:read ${origin}/api/pages/{id}\`. Der Inhalt ist Markdown.
 3. Bereiche: \`${origin}/api/spaces\`.
 
+Schreibt der Nutzer Englisch, hänge \`lang=en\` an jede Abfrage an: Seiten und Bereiche kommen dann auf Englisch.
+
 Nenne Titel und Stand (\`updated\`) der Seite, auf die du dich stützt. Steht etwas als Entwurf da, sag das. Findet die Suche nichts, versuche ein Synonym, statt eine Regel zu erfinden.`,
   },
 ];

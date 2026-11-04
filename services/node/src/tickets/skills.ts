@@ -21,7 +21,7 @@ Rufe \`list_tickets\` mit \`open: true\` auf. Kritisch ist, was mindestens eines
 
 Nenne je Ticket Schlüssel, Kunde, Anlage, wer dran ist, SLA-Restzeit und den letzten Stand aus dem Verlauf (\`get_ticket\`). Restzeiten gelten zum Stand, den das Ergebnis in der ersten Zeile nennt; rechne sie nicht mit der eigenen Uhrzeit nach. Hängt ein Ticket an einem Vertrag (\`contractId\`) mit Gutschrift- oder Vertragsstrafenregel, erwähne das. Zeigt der Client Ticketkarten, fasse zusammen statt alles zu wiederholen.
 
-HTTP: \`weldall request --scope tickets:read '${origin}/api/tickets?open=true'\`.`,
+HTTP: \`weldall request --scope tickets:read '${origin}/api/tickets?open=true'\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "ticket-status",
@@ -36,7 +36,7 @@ HTTP: \`weldall request --scope tickets:read '${origin}/api/tickets?open=true'\`
 
 Interne Notizen (\`internal: true\`) nie in Texte an Kunden übernehmen. Entwürfe an Kunden in der Sie-Form, sachlich, mit Ticketschlüssel.
 
-HTTP: \`weldall request --scope tickets:read ${origin}/api/tickets/SVC-1042\`.`,
+HTTP: \`weldall request --scope tickets:read ${origin}/api/tickets/SVC-1042\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "customer-tickets",
@@ -49,6 +49,6 @@ HTTP: \`weldall request --scope tickets:read ${origin}/api/tickets/SVC-1042\`.`,
 
 \`list_tickets\` mit \`customerId\` (Organisations-ID aus dem CRM). Trenne offene und erledigte Tickets, zähle Reklamationen und SLA-Verletzungen der letzten Monate und nenne Muster (gleiche Anlage, gleiche Ursache).
 
-HTTP: \`weldall request --scope tickets:read '${origin}/api/tickets?customerId=org-200'\`.`,
+HTTP: \`weldall request --scope tickets:read '${origin}/api/tickets?customerId=org-200'\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
 ];

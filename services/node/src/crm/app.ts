@@ -1,16 +1,20 @@
 import type { ReplayStore } from "@weldall/sdk";
 import { createNativeMcp } from "@weldall/sdk/mcp/server";
 import type { ServiceConfig } from "../shared/config.js";
-import { daysBetween, demoNow, germanDate, isoDay, shifted } from "../shared/dates.js";
+import { daysBetween, demoNow, isoDay, localDate, shifted } from "../shared/dates.js";
+import { type Lang, LANGUAGE, langOf, langQuery, money, tr } from "../shared/lang.js";
 import { createService, includes, notFound } from "../shared/service.js";
 import { toolError, toolResult, viewAssets } from "../shared/ui.js";
-import { ACTIVITIES, CONTACTS, DEALS, ORGANIZATIONS, STAGES, TEAM } from "./data.js";
+import * as DE from "./data.js";
+import * as EN from "./data.en.js";
 import { crmSkills } from "./skills.js";
 
 const SCOPE = "crm:read";
 const OPEN = new Set(["qualifizierung", "bedarfsanalyse", "angebot", "verhandlung"]);
-const money = (value: number) =>
-  new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
+const SOURCES = { de: DE, en: EN };
+// Activity types are codes in both datasets; German text keeps showing the code.
+const ACTIVITY_EN: Record<string, string> = { call: "Call", meeting: "Meeting", email: "Email", note: "Note" };
+const activityType = (type: string, lang: Lang) => (lang === "en" ? ACTIVITY_EN[type] ?? type : type);
 
 export function createApp(
   config: ServiceConfig,
@@ -18,17 +22,21 @@ export function createApp(
   ping: () => Promise<unknown>,
   now: () => Date = () => new Date(),
 ) {
-  const data = shifted({ organizations: ORGANIZATIONS, contacts: CONTACTS, activities: ACTIVITIES, deals: DEALS }, now);
+  const dataset = (lang: Lang) => {
+    const { ORGANIZATIONS, CONTACTS, ACTIVITIES, DEALS } = SOURCES[lang];
+    return shifted({ organizations: ORGANIZATIONS, contacts: CONTACTS, activities: ACTIVITIES, deals: DEALS }, now, lang);
+  };
+  const datasets = { de: dataset("de"), en: dataset("en") };
   const today = () => isoDay(demoNow(now()));
-  const org = (id: string) => data().organizations.find((o) => o.id === id);
-  const contact = (id: string | null) => (id ? data().contacts.find((p) => p.id === id) ?? null : null);
-  const history = (organizationId: string) =>
-    data().activities.filter((a) => a.organizationId === organizationId).sort((a, b) => b.date.localeCompare(a.date));
+  const org = (id: string, lang: Lang) => datasets[lang]().organizations.find((o) => o.id === id);
+  const contact = (id: string | null, lang: Lang) => (id ? datasets[lang]().contacts.find((p) => p.id === id) ?? null : null);
+  const history = (organizationId: string, lang: Lang) =>
+    datasets[lang]().activities.filter((a) => a.organizationId === organizationId).sort((a, b) => b.date.localeCompare(a.date));
 
-  const deal = (d: (typeof DEALS)[number]) => {
-    const stage = STAGES.find((s) => s.id === d.stage)!;
+  const deal = (d: (typeof DE.DEALS)[number], lang: Lang) => {
+    const stage = SOURCES[lang].STAGES.find((s) => s.id === d.stage)!;
     const open = OPEN.has(d.stage);
-    const organization = org(d.organizationId)!;
+    const organization = org(d.organizationId, lang)!;
     return {
       ...d,
       stageLabel: stage.label,
@@ -36,15 +44,15 @@ export function createApp(
       weightedValue: Math.round((d.value * stage.probability) / 100),
       open,
       organizationName: organization.name,
-      contact: contact(d.contactId),
+      contact: contact(d.contactId, lang),
       daysToClose: daysBetween(today(), d.closeDate),
       overdue: open && d.closeDate < today(),
       daysSinceActivity: daysBetween(d.lastActivity, today()),
     };
   };
-  const deals = (filter: { stage?: string; owner?: string; organizationId?: string }) =>
-    data()
-      .deals.map(deal)
+  const deals = (filter: { stage?: string; owner?: string; organizationId?: string }, lang: Lang) =>
+    datasets[lang]()
+      .deals.map((d) => deal(d, lang))
       .filter(
         (d) =>
           (!filter.stage || d.stage === filter.stage) &&
@@ -53,8 +61,8 @@ export function createApp(
       )
       .sort((a, b) => a.closeDate.localeCompare(b.closeDate));
 
-  const pipeline = (filter: { owner?: string; organizationId?: string }) => {
-    const items = deals(filter);
+  const pipeline = (filter: { owner?: string; organizationId?: string }, lang: Lang) => {
+    const items = deals(filter, lang);
     const open = items.filter((d) => d.open);
     const quarterEnd = (() => {
       const date = new Date(`${today()}T00:00:00Z`);
@@ -64,8 +72,8 @@ export function createApp(
       mode: "pipeline",
       today: today(),
       filter,
-      team: TEAM,
-      stages: STAGES.map((s) => {
+      team: SOURCES[lang].TEAM,
+      stages: SOURCES[lang].STAGES.map((s) => {
         const inStage = items.filter((d) => d.stage === s.id);
         return { ...s, count: inStage.length, value: inStage.reduce((sum, d) => sum + d.value, 0) };
       }),
@@ -84,14 +92,14 @@ export function createApp(
     };
   };
 
-  const briefing = (id: string) => {
-    const organization = org(id);
+  const briefing = (id: string, lang: Lang) => {
+    const organization = org(id, lang);
     if (!organization) return null;
     return {
       organization,
-      contacts: data().contacts.filter((p) => p.organizationId === id),
-      activities: history(id),
-      deals: deals({ organizationId: id }),
+      contacts: datasets[lang]().contacts.filter((p) => p.organizationId === id),
+      activities: history(id, lang),
+      deals: deals({ organizationId: id }, lang),
     };
   };
 
@@ -102,7 +110,7 @@ export function createApp(
     allowedTools: ["get_deal", "show_pipeline"],
     fallback: "Die Pipeline wird geladen. Zeigt dieser Client keine interaktiven Ansichten, steht dieselbe Übersicht als Text im Chat.",
   });
-  const owners = TEAM.filter((t) => t.role.startsWith("Key Account")).map((t) => t.name);
+  const owners = DE.TEAM.filter((t) => t.role.startsWith("Key Account")).map((t) => t.name);
 
   const mcp = createNativeMcp({
     path: "/api/mcp",
@@ -121,6 +129,7 @@ export function createApp(
           properties: {
             owner: { enum: owners, description: "Verantwortliche Key-Account-Managerin oder -Manager." },
             organizationId: { type: "string", pattern: "^org-\\d+$", description: "Nur Chancen dieses Kunden, z. B. org-200." },
+            language: LANGUAGE,
           },
           additionalProperties: false,
         },
@@ -128,16 +137,26 @@ export function createApp(
         annotations: { readOnlyHint: true, openWorldHint: false },
         _meta: { ui: { resourceUri: view.uri } },
         async handler(args) {
-          const result = pipeline(args as { owner?: string; organizationId?: string });
-          const lines = result.deals.map(
-            (d) => `- ${d.id} · ${d.title} (${d.organizationName}) · ${d.stageLabel} ${d.probability} % · ${money(d.value)} · Abschluss ${germanDate(d.closeDate)}${d.overdue ? " (überfällig)" : ""} · ${d.owner} · Nächster Schritt: ${d.nextStep}`,
+          const lang = langOf(args.language);
+          const { owner, organizationId } = args as { owner?: string; organizationId?: string };
+          const result = pipeline({ owner, organizationId }, lang);
+          const lines = result.deals.map((d) =>
+            tr(
+              lang,
+              `- ${d.id} · ${d.title} (${d.organizationName}) · ${d.stageLabel} ${d.probability} % · ${money(d.value)} · Abschluss ${localDate(d.closeDate)}${d.overdue ? " (überfällig)" : ""} · ${d.owner} · Nächster Schritt: ${d.nextStep}`,
+              `- ${d.id} · ${d.title} (${d.organizationName}) · ${d.stageLabel} ${d.probability}% · ${money(d.value, lang)} · close ${localDate(d.closeDate, lang)}${d.overdue ? " (overdue)" : ""} · ${d.owner} · Next step: ${d.nextStep}`,
+            ),
           );
           return toolResult(
             [
-              `Offene Pipeline ${money(result.totals.open)} (gewichtet ${money(result.totals.weighted)}) in ${result.totals.openCount} Chancen, Stand ${germanDate(result.today)}.`,
+              tr(
+                lang,
+                `Offene Pipeline ${money(result.totals.open)} (gewichtet ${money(result.totals.weighted)}) in ${result.totals.openCount} Chancen, Stand ${localDate(result.today)}.`,
+                `Open pipeline ${money(result.totals.open, lang)} (weighted ${money(result.totals.weighted, lang)}) in ${result.totals.openCount} deals, as of ${localDate(result.today, lang)}.`,
+              ),
               ...lines,
             ].join("\n"),
-            result,
+            { ...result, language: lang },
           );
         },
       },
@@ -147,7 +166,7 @@ export function createApp(
         description: "Eine Verkaufschance mit Kunde, Ansprechpartner, nächstem Schritt und dem Kontaktverlauf des Kunden.",
         inputSchema: {
           type: "object",
-          properties: { id: { type: "string", pattern: "^deal-\\d+$", description: "ID aus show_pipeline, z. B. deal-201." } },
+          properties: { id: { type: "string", pattern: "^deal-\\d+$", description: "ID aus show_pipeline, z. B. deal-201." }, language: LANGUAGE },
           required: ["id"],
           additionalProperties: false,
         },
@@ -155,17 +174,19 @@ export function createApp(
         annotations: { readOnlyHint: true, openWorldHint: false },
         _meta: { ui: { resourceUri: view.uri } },
         async handler(args) {
-          const item = data().deals.find((d) => d.id === args.id);
-          if (!item) return toolError(`Es gibt keine Verkaufschance mit der ID ${String(args.id)}.`);
-          const enriched = deal(item);
-          const activities = history(item.organizationId).slice(0, 6);
+          const lang = langOf(args.language);
+          const item = datasets[lang]().deals.find((d) => d.id === args.id);
+          if (!item)
+            return toolError(tr(lang, `Es gibt keine Verkaufschance mit der ID ${String(args.id)}.`, `There is no deal with the ID ${String(args.id)}.`));
+          const enriched = deal(item, lang);
+          const activities = history(item.organizationId, lang).slice(0, 6);
           return toolResult(
             [
-              `${enriched.title} (${enriched.organizationName}) · ${enriched.stageLabel} · ${money(enriched.value)} · Abschluss ${germanDate(enriched.closeDate)} · ${enriched.owner}`,
-              `Nächster Schritt: ${enriched.nextStep}`,
-              ...activities.map((a) => `- ${germanDate(a.date)} ${a.type}: ${a.summary}`),
+              `${enriched.title} (${enriched.organizationName}) · ${enriched.stageLabel} · ${money(enriched.value, lang)} · ${tr(lang, "Abschluss", "close")} ${localDate(enriched.closeDate, lang)} · ${enriched.owner}`,
+              `${tr(lang, "Nächster Schritt", "Next step")}: ${enriched.nextStep}`,
+              ...activities.map((a) => `- ${localDate(a.date, lang)} ${activityType(a.type, lang)}: ${a.summary}`),
             ].join("\n"),
-            { mode: "deal", today: today(), deal: enriched, organization: org(item.organizationId), activities },
+            { mode: "deal", today: today(), deal: enriched, organization: org(item.organizationId, lang), activities, language: lang },
           );
         },
       },
@@ -175,16 +196,17 @@ export function createApp(
         description: "Alles zu einem Kunden: Stammdaten, Ansprechpartner, Kontaktverlauf (neueste zuerst), Verkaufschancen und IDs der Verträge im Vertragsregister.",
         inputSchema: {
           type: "object",
-          properties: { id: { type: "string", pattern: "^org-\\d+$", description: "Organisations-ID, z. B. org-200. Unbekannt? Erst search_accounts." } },
+          properties: { id: { type: "string", pattern: "^org-\\d+$", description: "Organisations-ID, z. B. org-200. Unbekannt? Erst search_accounts." }, language: LANGUAGE },
           required: ["id"],
           additionalProperties: false,
         },
         scopes: [SCOPE],
         annotations: { readOnlyHint: true, openWorldHint: false },
         async handler(args) {
-          const result = briefing(String(args.id));
-          if (!result) return toolError(`Es gibt keinen Kunden mit der ID ${String(args.id)}.`);
-          return toolResult(JSON.stringify(result), result);
+          const lang = langOf(args.language);
+          const result = briefing(String(args.id), lang);
+          if (!result) return toolError(tr(lang, `Es gibt keinen Kunden mit der ID ${String(args.id)}.`, `There is no customer with the ID ${String(args.id)}.`));
+          return toolResult(JSON.stringify(result), { ...result, language: lang });
         },
       },
       {
@@ -193,18 +215,19 @@ export function createApp(
         description: "Sucht Kunden, Interessenten und Ansprechpartner nach Namen. Liefert Organisations-IDs für get_account und show_pipeline.",
         inputSchema: {
           type: "object",
-          properties: { q: { type: "string", minLength: 2, maxLength: 100 } },
+          properties: { q: { type: "string", minLength: 2, maxLength: 100 }, language: LANGUAGE },
           required: ["q"],
           additionalProperties: false,
         },
         scopes: [SCOPE],
         annotations: { readOnlyHint: true, openWorldHint: false },
         async handler(args) {
+          const lang = langOf(args.language);
           const q = String(args.q);
-          const organizations = data().organizations.filter((o) => includes([o.name, o.city], q));
-          const people = data().contacts.filter((p) => includes([p.name], q));
+          const organizations = datasets[lang]().organizations.filter((o) => includes([o.name, o.city], q));
+          const people = datasets[lang]().contacts.filter((p) => includes([p.name], q));
           const result = { organizations, contacts: people };
-          return toolResult(JSON.stringify(result), result);
+          return toolResult(JSON.stringify(result), { ...result, language: lang });
         },
       },
     ],
@@ -213,44 +236,45 @@ export function createApp(
   const service = createService({ key: "crm", name: "CRM", scope: SCOPE, config, replay, ping, skills: crmSkills(config.origin), mcp });
   const { app, read, readOnly } = service;
   assets.register(app);
+  // ?lang=en returns the English dataset; anything else the German one.
   app.get("/api/organizations", read, (c) => {
     const status = c.req.query("status");
-    const items = data().organizations.filter((o) => includes([o.name, o.city], c.req.query("q")) && (!status || o.status === status));
+    const items = datasets[langQuery(c)]().organizations.filter((o) => includes([o.name, o.city], c.req.query("q")) && (!status || o.status === status));
     return c.json({ items, total: items.length });
   });
   app.get("/api/organizations/:id", read, (c) => {
-    const item = org(c.req.param("id"));
+    const item = org(c.req.param("id"), langQuery(c));
     return item ? c.json({ item }) : c.json(notFound, 404);
   });
   app.get("/api/organizations/:id/contacts", read, (c) =>
-    org(c.req.param("id"))
-      ? c.json({ items: data().contacts.filter((p) => p.organizationId === c.req.param("id")) })
+    org(c.req.param("id"), langQuery(c))
+      ? c.json({ items: datasets[langQuery(c)]().contacts.filter((p) => p.organizationId === c.req.param("id")) })
       : c.json(notFound, 404),
   );
   app.get("/api/organizations/:id/activities", read, (c) =>
-    org(c.req.param("id")) ? c.json({ items: history(c.req.param("id")) }) : c.json(notFound, 404),
+    org(c.req.param("id"), langQuery(c)) ? c.json({ items: history(c.req.param("id"), langQuery(c)) }) : c.json(notFound, 404),
   );
   app.get("/api/organizations/:id/briefing", read, (c) => {
-    const result = briefing(c.req.param("id"));
+    const result = briefing(c.req.param("id"), langQuery(c));
     return result ? c.json(result) : c.json(notFound, 404);
   });
   app.get("/api/contacts", read, (c) => {
-    const items = data().contacts.filter((p) => includes([p.name], c.req.query("q")));
+    const items = datasets[langQuery(c)]().contacts.filter((p) => includes([p.name], c.req.query("q")));
     return c.json({ items, total: items.length });
   });
   app.get("/api/contacts/:id", read, (c) => {
-    const item = contact(c.req.param("id"));
+    const item = contact(c.req.param("id"), langQuery(c));
     return item ? c.json({ item }) : c.json(notFound, 404);
   });
   app.get("/api/deals", read, (c) => {
-    const items = deals({ stage: c.req.query("stage"), owner: c.req.query("owner"), organizationId: c.req.query("organizationId") });
+    const items = deals({ stage: c.req.query("stage"), owner: c.req.query("owner"), organizationId: c.req.query("organizationId") }, langQuery(c));
     return c.json({ items, total: items.length });
   });
   app.get("/api/deals/:id", read, (c) => {
-    const item = data().deals.find((d) => d.id === c.req.param("id"));
-    return item ? c.json({ item: deal(item) }) : c.json(notFound, 404);
+    const item = datasets[langQuery(c)]().deals.find((d) => d.id === c.req.param("id"));
+    return item ? c.json({ item: deal(item, langQuery(c)) }) : c.json(notFound, 404);
   });
-  app.get("/api/pipeline", read, (c) => c.json(pipeline({ owner: c.req.query("owner") })));
+  app.get("/api/pipeline", read, (c) => c.json(pipeline({ owner: c.req.query("owner") }, langQuery(c))));
   readOnly("/api/organizations/:id");
   readOnly("/api/contacts/:id");
   readOnly("/api/deals/:id");

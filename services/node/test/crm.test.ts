@@ -44,3 +44,34 @@ test("native MCP: pipeline board and deal detail share one view", async () => {
   assert.equal(deal.deal.organizationName, "Papierfabrik Rehwinkel AG");
   assert.equal(deal.activities.length > 0, true);
 });
+
+test("English: tools and HTTP return the English dataset, German stays the default", async () => {
+  const { get, rpc } = await fixture(createApp, "crm");
+  const tools = (await rpc("tools/list", {})).result.tools;
+  assert.ok(tools.every((t: any) => t.inputSchema.properties.language));
+
+  const board = (await rpc("tools/call", { name: "show_pipeline", arguments: { language: "en" } })).result;
+  assert.equal(board.structuredContent.language, "en");
+  assert.match(board.content[0].text, /^Open pipeline €[\d,]+ \(weighted €[\d,]+\) in \d+ deals, as of 28 Oct 2026\./);
+  assert.match(board.content[0].text, /deal-201 · Modernisation of PM3 roll drive \(Papierfabrik Rehwinkel AG\) · Negotiation 75% · €480,000 · close 15 Dec 2026/);
+  assert.equal(board.structuredContent.stages[0].label, "Qualification");
+
+  const deal = (await rpc("tools/call", { name: "get_deal", arguments: { id: "deal-201", language: "en" } })).result;
+  assert.match(deal.content[0].text, /^- 27 Oct 2026 Call: Ute Blum reports/m);
+  assert.equal(deal.structuredContent.deal.stageLabel, "Negotiation");
+  assert.equal(deal.structuredContent.organization.industry, "Paper and packaging");
+
+  const german = (await rpc("tools/call", { name: "get_deal", arguments: { id: "deal-201" } })).result;
+  assert.equal(german.structuredContent.language, "de");
+  assert.match(german.content[0].text, /Abschluss 15\.12\.2026/);
+  assert.match(german.content[0].text, /^- 27\.10\.2026 call: /m);
+
+  const account = (await rpc("tools/call", { name: "get_account", arguments: { id: "org-500", language: "en" } })).result;
+  assert.equal(account.structuredContent.language, "en");
+  assert.match(account.structuredContent.activities[0].summary, /Bid deadline 13 Nov 2026/);
+
+  assert.equal((await get("/api/deals/deal-201?lang=en")).item.title, "Modernisation of PM3 roll drive");
+  assert.equal((await get("/api/pipeline?lang=en")).stages[2].label, "Proposal");
+  assert.equal((await get("/api/pipeline")).stages[2].label, "Angebot");
+  assert.equal((await get("/api/organizations/org-200?lang=xx")).item.industry, "Papier und Verpackung");
+});

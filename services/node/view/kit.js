@@ -6,6 +6,12 @@ export const sdk = await import(new URL(`./sdk.js${version}`, import.meta.url).h
 
 const SVG = "http://www.w3.org/2000/svg";
 
+// The language of the records: a tool result says it in `language` ("de" or
+// "en"); views write their own labels, dates and amounts to match.
+let lang = "de";
+export const tr = (de, en) => (lang === "en" ? en : de);
+const locale = () => (lang === "en" ? "en-GB" : "de-DE");
+
 /** Create an element. Text is always set as text, never parsed as HTML. */
 export function h(tag, attrs, ...children) {
   const node = document.createElement(tag);
@@ -124,29 +130,33 @@ export function reveal(node) {
 // --- Formatting ---------------------------------------------------------------
 const day = (iso) => new Date(`${iso.slice(0, 10)}T12:00:00Z`);
 export const fmtDate = (iso, opts = {}) =>
-  iso ? new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC", ...opts }).format(day(iso)) : "–";
-export const fmtMonth = (iso) => new Intl.DateTimeFormat("de-DE", { month: "short", timeZone: "UTC" }).format(day(iso));
+  iso ? new Intl.DateTimeFormat(locale(), { day: lang === "en" ? "numeric" : "2-digit", month: lang === "en" ? "short" : "2-digit", year: "numeric", timeZone: "UTC", ...opts }).format(day(iso)) : "–";
+export const fmtMonth = (iso) => new Intl.DateTimeFormat(locale(), { month: "short", timeZone: "UTC" }).format(day(iso));
 export const fmtDateTime = (iso) =>
-  new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }).format(new Date(iso));
+  new Intl.DateTimeFormat(locale(), { day: lang === "en" ? "numeric" : "2-digit", month: lang === "en" ? "short" : "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Berlin" }).format(new Date(iso));
 export const fmtMoney = (value, currency = "EUR", compact = false) =>
-  new Intl.NumberFormat("de-DE", { style: "currency", currency, maximumFractionDigits: compact && value >= 1000000 ? 1 : compact || value >= 1000 ? 0 : 2, notation: compact && value >= 100000 ? "compact" : "standard" }).format(value);
+  new Intl.NumberFormat(locale(), { style: "currency", currency, maximumFractionDigits: compact && value >= 1000000 ? 1 : compact || value >= 1000 ? 0 : 2, notation: compact && value >= 100000 ? "compact" : "standard" }).format(value);
 export const daysBetween = (from, to) => Math.round((day(to) - day(from)) / 86400000);
 
+export const fmtNumber = (value) => value.toLocaleString(locale());
+
 export function relDays(days) {
-  if (days === 0) return "heute";
-  if (days === 1) return "morgen";
-  if (days === -1) return "gestern";
+  if (days === 0) return tr("heute", "today");
+  if (days === 1) return tr("morgen", "tomorrow");
+  if (days === -1) return tr("gestern", "yesterday");
   const abs = Math.abs(days);
-  const span = abs >= 540 ? `${Math.round(abs / 365)} Jahren` : abs >= 60 ? `${Math.round(abs / 30)} Monaten` : abs >= 21 ? `${Math.round(abs / 7)} Wochen` : `${abs} Tagen`;
-  return days > 0 ? `in ${span}` : `vor ${span}`;
+  const [n, de, en] = abs >= 540 ? [Math.round(abs / 365), "Jahren", "years"] : abs >= 60 ? [Math.round(abs / 30), "Monaten", "months"]
+    : abs >= 21 ? [Math.round(abs / 7), "Wochen", "weeks"] : [abs, "Tagen", "days"];
+  if (lang === "en") return days > 0 ? `in ${n} ${en}` : `${n} ${en} ago`;
+  return days > 0 ? `in ${n} ${de}` : `vor ${n} ${de}`;
 }
 
 export function relTime(iso, now = new Date()) {
   const minutes = Math.round((now - new Date(iso)) / 60000);
-  if (minutes < 1) return "gerade eben";
-  if (minutes < 60) return `vor ${minutes} Min.`;
+  if (minutes < 1) return tr("gerade eben", "just now");
+  if (minutes < 60) return tr(`vor ${minutes} Min.`, `${minutes} min ago`);
   const hours = Math.round(minutes / 60);
-  if (hours < 24) return `vor ${hours} Std.`;
+  if (hours < 24) return tr(`vor ${hours} Std.`, `${hours} h ago`);
   return relDays(-Math.round(hours / 24));
 }
 
@@ -160,13 +170,13 @@ document.addEventListener("keydown", (event) => {
 });
 
 /** Three-dot action menu. Items: { label, icon, run, disabled, hint } or "-". */
-export function menu(items, label = "Weitere Aktionen") {
+export function menu(items, label = tr("Weitere Aktionen", "More actions")) {
   const root = h("div", { class: "menu" });
   const pop = h("div", { class: "menu-pop", role: "menu" }, items.map((item) =>
     item === "-" ? h("div", { class: "menu-sep" }) :
       h("button", {
         class: "menu-item", role: "menuitem", type: "button", disabled: item.disabled,
-        title: item.disabled ? "Dieser Client unterstützt die Aktion nicht" : undefined,
+        title: item.disabled ? tr("Dieser Client unterstützt die Aktion nicht", "This client does not support the action") : undefined,
         onclick: async (event) => {
           event.stopPropagation();
           root.classList.remove("open");
@@ -187,7 +197,7 @@ export function menu(items, label = "Weitere Aktionen") {
 }
 
 export const empty = (iconName, text) => h("div", { class: "empty" }, icon(iconName, 28), h("div", {}, text));
-const skeleton = () => h("div", { class: "skeleton", "aria-label": "Wird geladen" }, h("div"), h("div"), h("div"), h("div"));
+const skeleton = () => h("div", { class: "skeleton", "aria-label": tr("Wird geladen", "Loading") }, h("div"), h("div"), h("div"), h("div"));
 
 /** A calendar file for a deadline (all-day) or an appointment (`at`, two hours). */
 export function ics({ uid, title, date, at, description }) {
@@ -198,7 +208,7 @@ export function ics({ uid, title, date, at, description }) {
     : [`DTSTART;VALUE=DATE:${date.slice(0, 10).replace(/-/g, "")}`,
        `DTEND;VALUE=DATE:${new Date(day(date).getTime() + 86400000).toISOString().slice(0, 10).replace(/-/g, "")}`];
   return [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Brakenstedt//Termine//DE", "BEGIN:VEVENT",
+    "BEGIN:VCALENDAR", "VERSION:2.0", `PRODID:-//Brakenstedt//${tr("Termine//DE", "Appointments//EN")}`, "BEGIN:VEVENT",
     `UID:${uid}@brakenstedt.example`, `DTSTAMP:${utc(new Date())}`, ...when,
     `SUMMARY:${text(title)}`, `DESCRIPTION:${text(description)}`,
     "BEGIN:VALARM", `TRIGGER:${at ? "-PT1H" : "-P7D"}`, "ACTION:DISPLAY", `DESCRIPTION:${text(title)}`, "END:VALARM",
@@ -217,11 +227,16 @@ function applyTheme(context) {
 /**
  * Mount a view. `render(data, app)` returns a Node for each successful tool
  * result. `app` offers host actions; each is a no-op with a notice when the host
- * does not advertise it.
+ * does not advertise it. `title` is the bar title per language, { de, en }.
  */
-export async function start({ render, loading = "Daten werden geladen …", tag = "Beispieldaten" }) {
+export async function start({ render, title }) {
   const main = document.getElementById("app") ?? document.body.appendChild(h("main", { id: "app" }));
   const bar = main.querySelector(".bar");
+  const tag = h("span", { class: "bar-tag" });
+  const label = () => {
+    if (title) bar?.querySelector(".bar-title")?.replaceChildren(tr(title.de, title.en));
+    tag.replaceChildren(tr("Beispieldaten", "Sample data"));
+  };
   main.querySelector(".shell-note")?.remove();
   const body = h("div", { class: "view-body" }, skeleton());
   const toastSlot = h("div");
@@ -240,22 +255,23 @@ export async function start({ render, loading = "Daten werden geladen …", tag 
     toastTimer = setTimeout(() => toastSlot.replaceChildren(), 3500);
   };
   const guard = (supported, run) => async (...args) => {
-    if (!supported) return toast("Dieser Client unterstützt die Aktion nicht.", true);
+    if (!supported) return toast(tr("Dieser Client unterstützt die Aktion nicht.", "This client does not support the action."), true);
     try { return await run(...args); }
-    catch { toast("Das hat nicht geklappt. Bitte erneut versuchen.", true); }
+    catch { toast(tr("Das hat nicht geklappt. Bitte erneut versuchen.", "That did not work. Please try again."), true); }
   };
 
   let mode = host.context?.displayMode ?? "inline";
   const modes = host.context?.availableDisplayModes ?? [];
   const expand = modes.includes("fullscreen") ? h("button", {
-    class: "bar-btn", type: "button", title: "Vollbild", "aria-label": "Vollbild umschalten",
+    class: "bar-btn", type: "button", title: tr("Vollbild", "Full screen"), "aria-label": tr("Vollbild umschalten", "Toggle full screen"),
     onclick: guard(true, async () => {
       const result = await sdk.requestMcpAppDisplayMode({ mode: mode === "fullscreen" ? "inline" : "fullscreen" });
       mode = result.mode;
       expand.replaceChildren(icon(mode === "fullscreen" ? "shrink" : "expand"));
     }),
   }, icon(mode === "fullscreen" ? "shrink" : "expand")) : null;
-  bar?.append(h("span", { class: "bar-spacer" }), tag && h("span", { class: "bar-tag" }, tag), expand);
+  label();
+  bar?.append(h("span", { class: "bar-spacer" }), tag, expand);
 
   const app = {
     toast,
@@ -269,7 +285,7 @@ export async function start({ render, loading = "Daten werden geladen …", tag 
     call: guard(toolCalls, async (name, args) => {
       const result = await sdk.callMcpAppTool(name, args);
       if (result.isError) {
-        toast(result.content?.map((block) => block.text).join(" ") || "Abfrage abgelehnt.", true);
+        toast(result.content?.map((block) => block.text).join(" ") || tr("Abfrage abgelehnt.", "Request refused."), true);
         return null;
       }
       return result.structuredContent ?? null;
@@ -277,7 +293,7 @@ export async function start({ render, loading = "Daten werden geladen …", tag 
     /** Put a prompt into the chat; the assistant answers with its own tools. */
     ask: guard(Boolean(caps.message), async (text) => {
       const result = await sdk.sendMcpAppMessage({ role: "user", content: [{ type: "text", text }] });
-      if (result?.isError) toast("Der Client hat die Nachricht nicht angenommen.", true);
+      if (result?.isError) toast(tr("Der Client hat die Nachricht nicht angenommen.", "The client did not accept the message."), true);
     }),
     /** Tell the model what the user is looking at, without a chat turn. */
     context: guard(Boolean(caps.updateModelContext), async (structuredContent, note) => {
@@ -286,15 +302,17 @@ export async function start({ render, loading = "Daten werden geladen …", tag 
     }),
     download: guard(Boolean(caps.downloadFile), async (filename, mimeType, text) => {
       const result = await sdk.downloadMcpAppFile({ contents: [{ type: "resource", resource: { uri: `file:///${filename}`, mimeType, text } }] });
-      if (!result?.isError) toast(`${filename} gespeichert.`);
+      if (!result?.isError) toast(tr(`${filename} gespeichert.`, `${filename} saved.`));
     }),
     /** Replace the view with a new render. */
     show(data) {
+      lang = data.language === "en" ? "en" : "de";
+      label();
       try {
         body.replaceChildren(render(data, app));
       } catch (error) {
         console.error("View render failed", error);
-        body.replaceChildren(empty("alert", `Die Ansicht konnte nicht dargestellt werden. ${error?.message ?? ""}`));
+        body.replaceChildren(empty("alert", `${tr("Die Ansicht konnte nicht dargestellt werden.", "The view could not be shown.")} ${error?.message ?? ""}`));
       }
     },
   };
@@ -304,14 +322,13 @@ export async function start({ render, loading = "Daten werden geladen …", tag 
     else if (event.method === "ui/notifications/tool-result") {
       const result = event.params ?? {};
       if (result.isError || !result.structuredContent)
-        body.replaceChildren(empty("alert", (result.content ?? []).map((block) => block.text).join(" ") || "Keine Daten erhalten."));
+        body.replaceChildren(empty("alert", (result.content ?? []).map((block) => block.text).join(" ") || tr("Keine Daten erhalten.", "No data received.")));
       else app.show(result.structuredContent);
-    } else if (event.method === "ui/notifications/tool-cancelled") body.replaceChildren(empty("minus", "Abgebrochen."));
+    } else if (event.method === "ui/notifications/tool-cancelled") body.replaceChildren(empty("minus", tr("Abgebrochen.", "Cancelled.")));
     else if (event.method === "ui/notifications/host-context-changed") {
       applyTheme(event.params);
       if (event.params?.displayMode) mode = event.params.displayMode;
     }
   });
-  body.firstChild?.setAttribute?.("aria-label", loading);
   return app;
 }

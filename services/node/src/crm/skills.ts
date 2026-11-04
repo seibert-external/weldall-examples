@@ -21,7 +21,7 @@ Rufe \`show_pipeline\` auf (optional \`owner\` für eine Person). Ordne die Lage
 
 Zeigt der Client das Pipeline-Board, zähle nicht alle Chancen auf. Verlorene Chancen sind kein Pipeline-Wert.
 
-HTTP: \`weldall request --scope crm:read ${origin}/api/pipeline\`.`,
+HTTP: \`weldall request --scope crm:read ${origin}/api/pipeline\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "start-kundenbriefing",
@@ -45,7 +45,7 @@ Für einen Kunden, im Beispiel die Papierfabrik Rehwinkel (org-200):
 
 Gliedere das Briefing in: Wer sitzt am Tisch, was läuft gut, was brennt, worüber wir sprechen sollten (Chancen, Fristen), offene Fragen. Fehlt ein System, sag welches, statt zu raten.
 
-HTTP: \`weldall request --scope crm:read ${origin}/api/organizations/org-200/briefing\`.`,
+HTTP: \`weldall request --scope crm:read ${origin}/api/organizations/org-200/briefing\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "briefing",
@@ -60,7 +60,7 @@ HTTP: \`weldall request --scope crm:read ${origin}/api/organizations/org-200/bri
 
 Status: customer (Kunde), prospect (Interessent), lead (Erstkontakt), churned (verloren).
 
-HTTP: \`weldall request --scope crm:read ${origin}/api/organizations/{id}/briefing\`, Suche über \`${origin}/api/organizations?q=<name>\` und \`${origin}/api/contacts?q=<name>\`.`,
+HTTP: \`weldall request --scope crm:read ${origin}/api/organizations/{id}/briefing\`, Suche über \`${origin}/api/organizations?q=<name>\` und \`${origin}/api/contacts?q=<name>\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
   {
     id: "pipeline",
@@ -75,6 +75,6 @@ HTTP: \`weldall request --scope crm:read ${origin}/api/organizations/{id}/briefi
 
 Phasen und Wahrscheinlichkeiten: Qualifizierung 10 %, Bedarfsanalyse 25 %, Angebot 50 %, Verhandlung 75 %, Gewonnen 100 %, Verloren 0 %. Summen nur über offene Chancen bilden. Ein Abschlussdatum in der Vergangenheit bei offener Chance ist überfällig und gehört angesprochen.
 
-HTTP: \`weldall request --scope crm:read '${origin}/api/deals?stage=verhandlung'\`.`,
+HTTP: \`weldall request --scope crm:read '${origin}/api/deals?stage=verhandlung'\`. Schreibt der Nutzer Englisch, hänge \`lang=en\` an die Abfrage an.`,
   },
 ];
