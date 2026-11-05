@@ -9,7 +9,7 @@ FROM python:3.13-slim-bookworm
 WORKDIR /app
 RUN groupadd --gid 1001 app && useradd --uid 1001 --gid app --no-create-home app
 COPY --from=build /app/.venv /app/.venv
-COPY --chown=app:app services/mail/app.py services/mail/config.py services/mail/data.py services/mail/dates.py services/mail/provider.py services/mail/replay.py services/mail/server.py ./
+COPY --chown=app:app services/mail/app.py services/mail/config.py services/mail/data.py services/mail/data_en.py services/mail/dates.py services/mail/provider.py services/mail/replay.py services/mail/server.py ./
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 USER app
 EXPOSE 8000
