@@ -45,11 +45,11 @@ test("secret generation uses unique keys, safe mode, and refuses overwrite", asy
     assert.notEqual(env.WELDALL_CONNECTOR_KEK, env.WELDALL_CREDENTIAL_ENCRYPTION_KEY);
   }));
 
-test("Compose pins Weldall 0.7.3 and drops removed login variables", async () => {
+test("Compose pins Weldall 0.7.4 and drops removed login variables", async () => {
   const compose = await readFile(new URL("../compose.yaml", import.meta.url), "utf8");
   assert.match(
     compose,
-    /&weldall-source https:\/\/github\.com\/seibert-external\/weldall\.git#64b3de458808956b7defd30b4a4a66d31a263577$/m,
+    /&weldall-source https:\/\/github\.com\/seibert-external\/weldall\.git#e2c64355dbaf802267b9a9d1bd3a366074643107$/m,
   );
   for (const removed of [
     "GOOGLE_CLIENT_ID",
