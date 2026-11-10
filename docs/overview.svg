@@ -32,7 +32,7 @@
   <rect class="core" x="300" y="226" width="220" height="108" rx="12"/>
   <text class="tc" x="410" y="270" text-anchor="middle">weldall</text>
   <text class="sc" x="410" y="292" text-anchor="middle">authorization server</text>
-  <text class="sc" x="410" y="311" text-anchor="middle">and admin UI · 0.7.3</text>
+  <text class="sc" x="410" y="311" text-anchor="middle">and admin UI · 0.7.4</text>
 
   <!-- Stores -->
   <rect class="store" x="320" y="430" width="180" height="64" rx="12"/>

@@ -33,7 +33,7 @@ ticket names its contract, a mail points to its ticket, contract and deal.
 
 | Service | Role | What it shows about a deployment |
 |---|---|---|
-| `weldall` | Authorization server and admin UI, built unmodified from pinned Weldall 0.7.3 source | Upstream runs as one container against PostgreSQL with a public HTTPS origin, an ES256 signing key, a credential-encryption key and an independent connector key-encryption key. Sign-in providers are database rows configured once at `/setup`. Migrations run on start. |
+| `weldall` | Authorization server and admin UI, built unmodified from pinned Weldall 0.7.4 source | Upstream runs as one container against PostgreSQL with a public HTTPS origin, an ES256 signing key, a credential-encryption key and an independent connector key-encryption key. Sign-in providers are database rows configured once at `/setup`. Migrations run on start. |
 | `contracts` | Contract register (TypeScript/Hono), 18 contracts with clauses | HTTP API plus native MCP with an MCP App: deadline radar and contract dossier. |
 | `crm` | CRM (TypeScript/Hono): 12 organisations, contacts, history, 14 deals | HTTP API plus native MCP with an MCP App: pipeline board and deal detail. |
 | `tickets` | Ticket system (TypeScript/Hono), 13 Jira-like tickets with SLA and history | HTTP API plus native MCP with an MCP App: ticket card and ticket list. |
