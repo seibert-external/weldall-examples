@@ -3,6 +3,7 @@ import { serve } from "@hono/node-server";
 import { createClient } from "redis";
 import { createApp as contracts } from "./contracts/app.js";
 import { createApp as crm } from "./crm/app.js";
+import { createApp as praxis } from "./praxis/app.js";
 import { readConfig, required } from "./shared/config.js";
 import { replayStore } from "./shared/replay.js";
 import { createApp as tickets } from "./tickets/app.js";
@@ -13,6 +14,7 @@ const SERVICES = {
   crm: { create: crm, port: 8000 },
   tickets: { create: tickets, port: 3003 },
   wiki: { create: wiki, port: 3004 },
+  praxis: { create: praxis, port: 3005 },
 } as const;
 
 const name = process.argv[2] as keyof typeof SERVICES;
