@@ -64,7 +64,7 @@ HTTP: \`weldall request --scope praxis:read ${origin}/api/no-shows\`. Schreibt d
     meta: { tags: ["praxis", "patient"], ...owner },
     content: `# Patient nachschlagen
 
-Finde den Patienten mit \`list_recall\` (Suche mit \`q\`, \`dueWithinDays: 90\` für alle mit Recall in Sicht) und lade ihn mit \`get_patient\`. Fasse Recall-Stand, letzte und nächste Termine und Hinweise zusammen.
+Finde den Patienten mit \`list_recall\` und \`q\` (Name oder Nummer; die Suche findet alle Patienten) und lade ihn mit \`get_patient\`. Fasse Recall-Stand, letzte und nächste Termine und Hinweise zusammen.
 
 Die Praxisverwaltung enthält nur Verwaltungsdaten, keine Befunde. Alle Patienten sind erfunden.
 

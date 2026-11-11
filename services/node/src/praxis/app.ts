@@ -1,7 +1,7 @@
 import type { ReplayStore } from "@weldall/sdk";
 import { createNativeMcp } from "@weldall/sdk/mcp/server";
 import type { ServiceConfig } from "../shared/config.js";
-import { addDays, daysBetween, demoNow, isoDay, localDate } from "../shared/dates.js";
+import { addDays, demoNow, isoDay, localDate } from "../shared/dates.js";
 import { type Lang, LANGUAGE, langOf, langQuery, tr } from "../shared/lang.js";
 import { createService, includes, notFound } from "../shared/service.js";
 import { toolError, toolResult, viewAssets } from "../shared/ui.js";
@@ -19,6 +19,7 @@ import {
   PRACTICE,
   PRACTITIONERS,
   type PractitionerId,
+  recallDue,
   STATUS_EN,
   weekStart,
 } from "./data.js";
@@ -38,24 +39,15 @@ export function practiceDay(today: string) {
   const book = appointmentBook(today, overdue);
   const monday = weekStart(today);
   const nextMonday = addDays(monday, 7);
-  const lastCleaning = new Map<string, string>();
   const nextVisit = new Map<string, Appointment>();
-  for (const a of book) {
-    if (a.status === "erschienen" && a.kind === "PZR") lastCleaning.set(a.patientId, a.date);
-    if (a.status === "geplant" && !nextVisit.has(a.patientId)) nextVisit.set(a.patientId, a);
-  }
-  return { today, book, monday, nextMonday, overdue, lastCleaning, nextVisit };
+  for (const a of book) if (a.status === "geplant" && !nextVisit.has(a.patientId)) nextVisit.set(a.patientId, a);
+  return { today, book, monday, nextMonday, overdue, nextVisit };
 }
 
 type Day = ReturnType<typeof practiceDay>;
 
 export function recallItem(day: Day, p: Patient, lang: Lang) {
-  // A cleaning in the appointment book counts as the last one; only regular
-  // patients have one, so the overdue list stays the same every day.
-  const booked = day.lastCleaning.get(p.id);
-  const last = booked && booked > lastProphylaxis(day.today, p) ? booked : lastProphylaxis(day.today, p);
-  const due = addDays(last, Math.round(p.recallMonths * 30.4));
-  const days = booked ? daysBetween(due, day.today) : overdueDays(day.today, p);
+  const days = overdueDays(day.today, p);
   const next = day.nextVisit.get(p.id);
   return {
     id: p.id,
@@ -65,8 +57,8 @@ export function recallItem(day: Day, p: Patient, lang: Lang) {
     contact: p.contact,
     contactLabel: contact(lang, p.contact),
     recallMonths: p.recallMonths,
-    lastProphylaxis: last,
-    recallDue: due,
+    lastProphylaxis: lastProphylaxis(day.today, p),
+    recallDue: recallDue(day.today, p),
     overdueDays: days,
     state: days > 0 ? "overdue" : days > -30 ? "due-soon" : "ok",
     note: p.note ? NOTES[p.note][lang] : null,
@@ -122,7 +114,8 @@ export function createApp(
   const recall = (lang: Lang, f: RecallFilter) => {
     const day = current();
     return PATIENTS.map((p) => recallItem(day, p, lang))
-      .filter((p) => p.overdueDays > -(f.dueWithinDays ?? 0) && (!f.contact || p.contact === f.contact) && includes([p.name, p.id], f.q))
+      // A name search finds every patient; otherwise only overdue or soon due ones.
+      .filter((p) => (f.q ? includes([p.name, p.id], f.q) : p.overdueDays >= -(f.dueWithinDays ?? 0)) && (!f.contact || p.contact === f.contact))
       .sort((a, b) => b.overdueDays - a.overdueDays);
   };
 
@@ -165,11 +158,11 @@ export function createApp(
     fallback: "Das Recall-Cockpit wird geladen. Zeigt dieser Client keine interaktiven Ansichten, steht dieselbe Übersicht als Text im Chat.",
   });
   const ui = { ui: { resourceUri: view.uri } };
-  const readOnly = { readOnlyHint: true, openWorldHint: false };
+  const readOnlyHint = { readOnlyHint: true, openWorldHint: false };
 
   const mcp = createNativeMcp({
     path: "/api/mcp",
-    description: `Praxisverwaltung der ${PRACTICE.name} in ${PRACTICE.town} (erfundene Zahnarztpraxis): Patienten mit Prophylaxe-Recall, Terminbuch von Dr. Sommer, Dr. Winter und der Prophylaxe (ZMP Herbst), freie Slots und Ausfallquoten. Für Fragen wie „Wen laden wir diese Woche zur Prophylaxe ein?“ oder „Wo sind nächste Woche noch Lücken?“.`,
+    description: `Praxisverwaltung der ${PRACTICE.name} (erfundene Zahnarztpraxis): Patienten mit Prophylaxe-Recall, Terminbuch von Dr. Sommer, Dr. Winter und der Prophylaxe (ZMP Herbst), freie Slots und Ausfallquoten. Für Fragen wie „Wen laden wir diese Woche zur Prophylaxe ein?“ oder „Wo sind nächste Woche noch Lücken?“.`,
     discoveryScopes: [SCOPE],
     resources: [view],
     tools: [
@@ -189,7 +182,7 @@ export function createApp(
           additionalProperties: false,
         },
         scopes: [SCOPE],
-        annotations: readOnly,
+        annotations: readOnlyHint,
         _meta: ui,
         async handler(args) {
           const { language, ...filter } = args as RecallFilter & { language?: string };
@@ -223,7 +216,7 @@ export function createApp(
           additionalProperties: false,
         },
         scopes: [SCOPE],
-        annotations: readOnly,
+        annotations: readOnlyHint,
         _meta: ui,
         async handler(args) {
           const lang = langOf(args.language);
@@ -246,7 +239,7 @@ export function createApp(
           "Anteil nicht erschienener Patienten je Wochentag über die letzten acht Wochen (abgesagte Termine zählen nicht). Grundlage für Erinnerungen und Überbuchung. Clients mit MCP-App-Unterstützung zeigen ein Balkendiagramm.",
         inputSchema: { type: "object", properties: { language: LANGUAGE }, additionalProperties: false },
         scopes: [SCOPE],
-        annotations: readOnly,
+        annotations: readOnlyHint,
         _meta: ui,
         async handler(args) {
           const lang = langOf(args.language);
@@ -273,7 +266,7 @@ export function createApp(
           additionalProperties: false,
         },
         scopes: [SCOPE],
-        annotations: readOnly,
+        annotations: readOnlyHint,
         _meta: ui,
         async handler(args) {
           const lang = langOf(args.language);
@@ -295,7 +288,7 @@ export function createApp(
   });
 
   const service = createService({ key: "praxis", name: "Praxisverwaltung", scope: SCOPE, config, replay, ping, skills: praxisSkills(config.origin), mcp });
-  const { app, read, readOnly: refuseWrites } = service;
+  const { app, read, readOnly } = service;
   assets.register(app);
   app.get("/api/recall", read, (c) => {
     const lang = langQuery(c);
@@ -314,6 +307,6 @@ export function createApp(
     const day = current();
     return c.json({ item: recallItem(day, patient, langQuery(c)), appointments: day.book.filter((a) => a.patientId === patient.id) });
   });
-  refuseWrites("/api/patients/:id");
+  readOnly("/api/patients/:id");
   return service;
 }

@@ -1,6 +1,7 @@
 import { createCipheriv, randomBytes } from "node:crypto";
 
-// The public group reads every demo system; never administration or IaC.
+// The public group reads every company demo system, not the dental practice;
+// never administration or IaC.
 export const DEMO_SCOPES = ["weldall:login", "contracts:read", "crm:read", "tickets:read", "wiki:read", "mail:read"];
 export const DEMO_SERVICES = [
   { key: "contracts", name: "Vertragsregister", env: "CONTRACTS_ORIGIN" },

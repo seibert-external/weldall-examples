@@ -27,7 +27,7 @@ Die Demo-Schnittstellen (Verträge, CRM, Tickets, Wiki, Postfach, Praxis) speich
 - ein Hashwert jedes Sicherheitsnachweises (DPoP-Proof) bis zu dessen Ablauf, gegen Wiederverwendung (Minuten);
 - beim Prüfen der Gruppenzugehörigkeit Ihre E-Mail-Adresse für 5 Minuten, unter einem Hashwert der Adresse.
 
-Jede bestätigte Identität erhält Lesezugriff auf die Demo-Daten (Gruppe `demo-readers`), nie Verwaltungsrechte.
+Jede bestätigte Identität erhält Lesezugriff auf die Firmen-Demodaten (Gruppe `demo-readers`), nie Verwaltungsrechte. Lesezugriff auf die Zahnarztpraxis (Gruppe `praxis-demo`) erhalten nur die Konten, die der Betreiber einträgt; ihre E-Mail-Adressen stehen dafür in der Konfiguration des Deployments.
 
 Bei jedem Aufruf wird Ihre IP-Adresse technisch bedingt verarbeitet. Für Betrieb und Sicherheit schreiben die Hosting-Plattform und der Weldall-Server Protokolle; der Weldall-Server maskiert darin E-Mail-Adressen. Die Demo läuft auf der von der Seibert Group verwalteten Hosting-Plattform, die Server stellt die Hetzner Online GmbH, Gunzenhausen. Verarbeitungsort: Deutschland (EU).
 

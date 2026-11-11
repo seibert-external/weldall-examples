@@ -127,7 +127,7 @@ function slots(data) {
         h("div", { class: "eyebrow" }, data.week === "next" ? tr("Nächste Woche", "Next week") : tr("Diese Woche", "This week")),
         h("h1", { class: "title" }, tr(`${data.total} freie Slots ab ${fmtDate(data.monday)}`, `${data.total} free slots from ${fmtDate(data.monday)}`)),
         h("p", { class: "subtitle" }, tr("Sprechzeiten 8 bis 12 und 13 bis 17 Uhr, Slots zu einer Stunde.", "Surgery hours 8 to 12 and 1 to 5 pm, one-hour slots.")))),
-    h("div", { class: "week", style: { "--days": 5 } },
+    h("div", { class: "week" },
       h("div", {}), data.days.map((d) => h("div", { class: "week-head small muted" }, DAYS()[d.weekday], h("span", { class: "faint" }, ` ${fmtDate(d.date, { year: undefined })}`))),
       people.map((p) => [
         h("div", { class: "week-who" }, h("strong", { class: "small" }, p.name), h("span", { class: "small faint" }, p.role)),
@@ -185,7 +185,7 @@ function patient(data) {
       h("aside", { class: "panel" }, h("div", { class: "panel-body" }, props([
         [tr("Letzte PZR", "Last cleaning"), fmtDate(p.lastProphylaxis)],
         [tr("Recall", "Recall"), tr(`alle ${p.recallMonths} Monate`, `every ${p.recallMonths} months`)],
-        [tr("Fällig seit", "Due since"), fmtDate(p.recallDue)],
+        [p.overdueDays > 0 ? tr("Fällig seit", "Due since") : tr("Fällig am", "Due on"), fmtDate(p.recallDue)],
         [tr("Kontaktweg", "Contact"), h("span", { class: "row" }, icon(CONTACT_ICON[p.contact] ?? "user", 14), p.contactLabel)],
       ])))),
     h("div", { class: "actions" },

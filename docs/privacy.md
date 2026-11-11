@@ -27,7 +27,7 @@ The demo APIs (contracts, CRM, tickets, wiki, mailbox, practice) store no querie
 - a hash of each security proof (DPoP proof) until it expires, to prevent reuse (minutes);
 - while checking group membership, your e-mail address for 5 minutes, under a hash of the address.
 
-Every verified identity gets read access to the demo data (group `demo-readers`), never administration rights.
+Every verified identity gets read access to the company demo data (group `demo-readers`), never administration rights. Only the accounts the operator lists get read access to the dental practice (group `praxis-demo`); their email addresses are kept in the deployment configuration for that purpose.
 
 Every request necessarily processes your IP address. For operation and security, the hosting platform and the Weldall server write logs; the Weldall server masks e-mail addresses in them. The demo runs on the hosting platform managed by the Seibert Group, with servers provided by Hetzner Online GmbH, Gunzenhausen. Place of processing: Germany (EU).
 

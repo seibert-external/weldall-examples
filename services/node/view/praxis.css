@@ -20,7 +20,7 @@
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.week { display: grid; grid-template-columns: 150px repeat(var(--days), minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.week { display: grid; grid-template-columns: 150px repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line); }
 .week > * { padding: 10px 8px; border-bottom: 1px solid var(--line); min-width: 0; }
 .week-head { font-weight: 600; }
 .week-who { display: flex; flex-direction: column; gap: 2px; }
@@ -46,5 +46,5 @@
 
 @media (max-width: 600px) {
   .r-item .contact { display: none; }
-  .week { grid-template-columns: 96px repeat(var(--days), minmax(0, 1fr)); font-size: 12px; }
+  .week { grid-template-columns: 96px repeat(5, minmax(0, 1fr)); font-size: 12px; }
 }

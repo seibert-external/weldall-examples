@@ -53,11 +53,11 @@ test("English: text and labels in English, codes stay German", async () => {
   const result = (await rpc("tools/call", { name: "list_recall", arguments: { language: "en" } })).result;
   assert.match(result.content[0].text, /^As of 12 Nov 2026\. \d+ of 140 patients are overdue/);
   assert.equal(result.structuredContent.language, "en");
-  const sms = PATIENTS.find((p) => p.contact === "E-Mail")!;
-  const card = (await rpc("tools/call", { name: "get_patient", arguments: { id: sms.id, language: "en" } })).result;
+  const mail = PATIENTS.find((p) => p.contact === "E-Mail")!;
+  const card = (await rpc("tools/call", { name: "get_patient", arguments: { id: mail.id, language: "en" } })).result;
   assert.equal(card.structuredContent.item.contact, "E-Mail");
   assert.equal(card.structuredContent.item.contactLabel, "Email");
-  assert.equal((await get(`/api/patients/${sms.id}?lang=en`)).item.contactLabel, "Email");
+  assert.equal((await get(`/api/patients/${mail.id}?lang=en`)).item.contactLabel, "Email");
 });
 
 test("the API is read-only and needs the praxis scope", async () => {
