@@ -151,8 +151,9 @@ export function appointmentBook(today: string, overdue: Set<string>): Appointmen
             date,
             time: `${String(hour).padStart(2, "0")}:00`,
             practitioner: practitioner.id,
-            // Overdue patients have nothing booked ahead; that is why they need a call.
-            patientId: future ? regular.id : patient.id,
+            // Overdue patients have nothing booked ahead and no recent cleaning;
+            // that is why they need a call.
+            patientId: future || kind === "PZR" ? regular.id : patient.id,
             kind,
             status,
           });

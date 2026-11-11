@@ -39,13 +39,14 @@ function patientRow(p, max) {
     onclick: (e) => { if (!e.target.closest("button")) openPatient(p.id); },
     onkeydown: (e) => { if (e.key === "Enter" && !e.target.closest("button")) openPatient(p.id); } },
     h("span", { class: "avatar" }, initials(p.name)),
-    h("div", { class: "grow" },
-      h("div", { class: "item-title ellipsis" }, p.name),
+    h("div", { class: "grow r-main" },
+      h("div", { class: "row" },
+        h("span", { class: "item-title ellipsis grow" }, p.name),
+        h("span", { class: "contact small muted", title: p.contactLabel }, icon(CONTACT_ICON[p.contact] ?? "user", 14), p.contactLabel)),
+      overdueBar(p.overdueDays, max),
       h("div", { class: "item-sub ellipsis" },
         `${p.id} · ${p.age} ${tr("J.", "y")} · ${p.insurance} · Recall ${p.recallMonths} ${tr("Mon.", "mo")}`,
         p.note ? h("span", { class: "note" }, ` · ${p.note}`) : null)),
-    overdueBar(p.overdueDays, max),
-    h("span", { class: "contact small muted", title: p.contactLabel }, icon(CONTACT_ICON[p.contact] ?? "user", 14), p.contactLabel),
     h("button", { class: "btn sm", type: "button", disabled: !app.can.chat, title: tr("PZR-Termin vorschlagen", "Propose a cleaning slot"), onclick: (e) => { e.stopPropagation(); propose(p); } },
       icon("sparkles"), tr("PZR vorschlagen", "Propose slot")));
 }

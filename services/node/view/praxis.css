@@ -1,7 +1,9 @@
 .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 
 /* Recall rows */
-.r-item { grid-template-columns: 34px minmax(0, 1fr) 150px 92px auto; }
+.r-item { grid-template-columns: 34px minmax(0, 1fr) auto; align-items: start; }
+.r-item .avatar, .r-item .btn { margin-top: 2px; }
+.r-main { display: flex; flex-direction: column; gap: 5px; }
 .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 650; }
 .note { color: var(--fg-3); }
 .od { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
@@ -43,9 +45,6 @@
 .appt:first-child { border-top: 0; }
 
 @media (max-width: 600px) {
-  .r-item { grid-template-columns: 34px minmax(0, 1fr) auto; }
-  .r-item .od { grid-column: 2; }
   .r-item .contact { display: none; }
-  .r-item .btn { grid-row: 1; grid-column: 3; }
   .week { grid-template-columns: 96px repeat(var(--days), minmax(0, 1fr)); font-size: 12px; }
 }

@@ -1,7 +1,7 @@
 import type { ReplayStore } from "@weldall/sdk";
 import { createNativeMcp } from "@weldall/sdk/mcp/server";
 import type { ServiceConfig } from "../shared/config.js";
-import { addDays, demoNow, isoDay, localDate } from "../shared/dates.js";
+import { addDays, daysBetween, demoNow, isoDay, localDate } from "../shared/dates.js";
 import { type Lang, LANGUAGE, langOf, langQuery, tr } from "../shared/lang.js";
 import { createService, includes, notFound } from "../shared/service.js";
 import { toolError, toolResult, viewAssets } from "../shared/ui.js";
@@ -19,7 +19,6 @@ import {
   PRACTICE,
   PRACTITIONERS,
   type PractitionerId,
-  recallDue,
   STATUS_EN,
   weekStart,
 } from "./data.js";
@@ -39,19 +38,24 @@ export function practiceDay(today: string) {
   const book = appointmentBook(today, overdue);
   const monday = weekStart(today);
   const nextMonday = addDays(monday, 7);
-  const lastVisit = new Map<string, Appointment>();
+  const lastCleaning = new Map<string, string>();
   const nextVisit = new Map<string, Appointment>();
   for (const a of book) {
-    if (a.status === "erschienen") lastVisit.set(a.patientId, a);
+    if (a.status === "erschienen" && a.kind === "PZR") lastCleaning.set(a.patientId, a.date);
     if (a.status === "geplant" && !nextVisit.has(a.patientId)) nextVisit.set(a.patientId, a);
   }
-  return { today, book, monday, nextMonday, overdue, lastVisit, nextVisit };
+  return { today, book, monday, nextMonday, overdue, lastCleaning, nextVisit };
 }
 
 type Day = ReturnType<typeof practiceDay>;
 
 export function recallItem(day: Day, p: Patient, lang: Lang) {
-  const days = overdueDays(day.today, p);
+  // A cleaning in the appointment book counts as the last one; only regular
+  // patients have one, so the overdue list stays the same every day.
+  const booked = day.lastCleaning.get(p.id);
+  const last = booked && booked > lastProphylaxis(day.today, p) ? booked : lastProphylaxis(day.today, p);
+  const due = addDays(last, Math.round(p.recallMonths * 30.4));
+  const days = booked ? daysBetween(due, day.today) : overdueDays(day.today, p);
   const next = day.nextVisit.get(p.id);
   return {
     id: p.id,
@@ -61,8 +65,8 @@ export function recallItem(day: Day, p: Patient, lang: Lang) {
     contact: p.contact,
     contactLabel: contact(lang, p.contact),
     recallMonths: p.recallMonths,
-    lastProphylaxis: lastProphylaxis(day.today, p),
-    recallDue: recallDue(day.today, p),
+    lastProphylaxis: last,
+    recallDue: due,
     overdueDays: days,
     state: days > 0 ? "overdue" : days > -30 ? "due-soon" : "ok",
     note: p.note ? NOTES[p.note][lang] : null,
