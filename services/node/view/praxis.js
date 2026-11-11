@@ -107,7 +107,7 @@ function cockpit(data) {
       stat(s.dueSoon, tr("fällig in 30 Tagen", "due in 30 days"), s.dueSoon ? "warning" : null),
       stat(s.freeProphylaxisSlotsNextWeek, tr("freie PZR-Slots", "free cleaning slots")),
       stat(pct(s.noShowRate), tr("Ausfallquote 8 Wochen", "no-shows, 8 weeks"))),
-    h("div", { class: "split" },
+    h("div", { class: "split p-split" },
       h("section", { class: "list" },
         h("div", { class: "group-head" }, h("span", { class: "eyebrow" }, tr("Zuerst anrufen", "Call first")), h("span", { class: "small faint" }, first.length)),
         first.map((p) => patientRow(p, max)),

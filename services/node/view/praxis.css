@@ -45,6 +45,11 @@
 .appt { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
 .appt:first-child { border-top: 0; }
 
+/* A chat column is about 620 px wide: the patient list needs the full width there. */
+@media (max-width: 760px) {
+  .p-split { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 600px) {
   .r-item .contact { display: none; }
   .week { grid-template-columns: 96px repeat(5, minmax(0, 1fr)); font-size: 12px; }
