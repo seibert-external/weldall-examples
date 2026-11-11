@@ -11,6 +11,7 @@
 .od-fill { height: 100%; border-radius: 3px; background: var(--accent); transform-origin: left; animation: grow .8s cubic-bezier(.2, .7, .2, 1) both; }
 .od-fill.warning { background: var(--warning); }
 .od-fill.danger { background: var(--danger); }
+.booked { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; margin-top: 6px; }
 .contact { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 
 /* Slots */

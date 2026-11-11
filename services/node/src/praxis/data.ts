@@ -79,6 +79,10 @@ function pick<T>(next: () => number, items: readonly T[]): T {
   return items[Math.floor(next() * items.length)]!;
 }
 
+export function recallInterval(months: number) {
+  return Math.round(months * 30.4);
+}
+
 export const PATIENTS: Patient[] = (() => {
   const next = random(20261112);
   const names = new Set<string>();
@@ -89,7 +93,7 @@ export const PATIENTS: Patient[] = (() => {
     names.add(name);
     const paro = next() < 0.12;
     const recallMonths = paro ? 3 : next() < 0.15 ? 12 : 6;
-    const interval = Math.round(recallMonths * 30.4);
+    const interval = recallInterval(recallMonths);
     // About one in five is overdue, one in seven due within a month, the rest fine.
     const roll = next();
     const daysAgo = roll < 0.2
@@ -128,7 +132,10 @@ export function weekStart(iso: string) {
 export function appointmentBook(today: string, overdue: Set<string>): Appointment[] {
   const next = random(4711);
   const monday = weekStart(today);
+  // Overdue patients have nothing booked ahead; that is why they need a call.
   const regulars = PATIENTS.filter((p) => !overdue.has(p.id));
+  // Cleanings ahead go to the patients whose recall falls due first.
+  const dueFirst = [...regulars].sort((a, b) => (recallInterval(a.recallMonths) - a.lastProphylaxisDaysAgo) - (recallInterval(b.recallMonths) - b.lastProphylaxisDaysAgo));
   const book: Appointment[] = [];
   const busy = new Set<string>();
   const cleaningBooked = new Set<string>();
@@ -140,10 +147,9 @@ export function appointmentBook(today: string, overdue: Set<string>): Appointmen
           const booked = next();
           const outcome = next();
           const patient = pick(next, PATIENTS);
-          let regular = pick(next, regulars);
+          const regular = pick(next, regulars);
           let kind = pick(next, practitioner.kinds);
           const date = addDays(monday, week * 7 + weekday);
-          // Overdue patients have nothing booked ahead; that is why they need a call.
           const future = date >= today;
           // Prophylaxis gaps next week are the point of the demo: Herbst is less booked.
           const load = (LOAD[week] ?? 0.86) - (practitioner.id === "herbst" && week >= 1 ? 0.2 : 0);
@@ -151,19 +157,16 @@ export function appointmentBook(today: string, overdue: Set<string>): Appointmen
           // Past prophylaxis slots were advice and fluoride; cleanings before the
           // book are recorded per patient. Ahead, one cleaning per patient.
           if (!future && kind === "PZR") kind = "Mundhygieneberatung";
-          if (future && kind === "PZR") {
-            const start = regulars.indexOf(regular);
-            for (let i = 1; cleaningBooked.has(regular.id) && i <= regulars.length; i++)
-              regular = regulars[(start + i) % regulars.length]!;
-            cleaningBooked.add(regular.id);
-          }
+          const cleaning = future && kind === "PZR" ? dueFirst.find((p) => !cleaningBooked.has(p.id)) : undefined;
+          if (future && kind === "PZR" && !cleaning) kind = "Fluoridierung";
           const status = future
             ? "geplant"
             : outcome < NO_SHOW[weekday]! ? "nicht erschienen" : outcome > 0.96 ? "abgesagt" : "erschienen";
-          const patientId = future ? regular.id : patient.id;
+          const patientId = cleaning?.id ?? (future ? regular.id : patient.id);
           // A patient sits in one chair at a time.
           if (busy.has(`${date} ${hour} ${patientId}`)) continue;
           busy.add(`${date} ${hour} ${patientId}`);
+          if (cleaning) cleaningBooked.add(cleaning.id);
           book.push({
             id: `T-${date.replaceAll("-", "")}-${practitioner.id}-${String(hour).padStart(2, "0")}`,
             date,
@@ -179,6 +182,5 @@ export function appointmentBook(today: string, overdue: Set<string>): Appointmen
 
 export const age = (today: string, birthYear: number) => Number(today.slice(0, 4)) - birthYear;
 export const lastProphylaxis = (today: string, p: Patient) => addDays(today, -p.lastProphylaxisDaysAgo);
-export const recallInterval = (p: Patient) => Math.round(p.recallMonths * 30.4);
-export const recallDue = (today: string, p: Patient) => addDays(today, recallInterval(p) - p.lastProphylaxisDaysAgo);
+export const recallDue = (today: string, p: Patient) => addDays(today, recallInterval(p.recallMonths) - p.lastProphylaxisDaysAgo);
 export const overdueDays = (today: string, p: Patient) => daysBetween(recallDue(today, p), today);

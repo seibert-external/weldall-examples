@@ -47,8 +47,10 @@ function patientRow(p, max) {
       h("div", { class: "item-sub ellipsis" },
         `${p.id} · ${p.age} ${tr("J.", "y")} · ${p.insurance} · Recall ${p.recallMonths} ${tr("Mon.", "mo")}`,
         p.note ? h("span", { class: "note" }, ` · ${p.note}`) : null)),
-    h("button", { class: "btn sm", type: "button", disabled: !app.can.chat, title: tr("PZR-Termin vorschlagen", "Propose a cleaning slot"), onclick: (e) => { e.stopPropagation(); propose(p); } },
-      icon("sparkles"), tr("PZR vorschlagen", "Propose slot")));
+    p.nextAppointment
+      ? h("span", { class: "small muted booked" }, icon("calendar", 14), `${fmtDate(p.nextAppointment.date, { year: undefined })} ${p.nextAppointment.time}`)
+      : h("button", { class: "btn sm", type: "button", disabled: !app.can.chat, title: tr("PZR-Termin vorschlagen", "Propose a cleaning slot"), onclick: (e) => { e.stopPropagation(); propose(p); } },
+        icon("sparkles"), tr("PZR vorschlagen", "Propose slot")));
 }
 
 function slotPanel(slots) {
@@ -71,7 +73,18 @@ function noShowBars(rates, compact = false) {
 }
 
 // --- Cockpit -----------------------------------------------------------------------
+function results(data) {
+  const max = Math.max(30, ...data.items.map((p) => p.overdueDays));
+  return reveal(h("div", { class: "wrap" },
+    h("header", { class: "hero" }, h("div", {},
+      h("div", { class: "eyebrow" }, tr("Patientensuche", "Patient search")),
+      h("h1", { class: "title" }, tr(`${data.items.length} Treffer für „${data.filter.q}“`, `${data.items.length} results for "${data.filter.q}"`)))),
+    data.items.length ? h("section", { class: "list" }, data.items.map((p) => patientRow(p, max)))
+      : empty("user", tr("Kein Patient gefunden.", "No patient found."))));
+}
+
 function cockpit(data) {
+  if (data.filter?.q) return results(data);
   cockpitData = data;
   const s = data.summary;
   const overdue = data.items.filter((p) => p.overdueDays > 0);

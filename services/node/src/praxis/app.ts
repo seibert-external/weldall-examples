@@ -41,7 +41,7 @@ export function practiceDay(today: string) {
   const nextMonday = addDays(monday, 7);
   const nextVisit = new Map<string, Appointment>();
   for (const a of book) if (a.status === "geplant" && !nextVisit.has(a.patientId)) nextVisit.set(a.patientId, a);
-  return { today, book, monday, nextMonday, overdue, nextVisit };
+  return { today, book, monday, nextMonday, nextVisit };
 }
 
 type Day = ReturnType<typeof practiceDay>;
