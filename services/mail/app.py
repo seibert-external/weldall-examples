@@ -7,7 +7,7 @@ from weldall.adapters.fastapi import init_weldall
 import data
 import data_en
 from dates import shift, shift_all, utc_now
-from provider import provider_router
+from provider import parse_members, provider_router
 from replay import RedisReplayStore
 
 
@@ -86,7 +86,11 @@ def create_app(config, redis, now=utc_now):
         return await call_next(request)
 
     weldall.register_routes(app)
-    app.include_router(provider_router(redis, config["provider_token"]))
+    app.include_router(
+        provider_router(
+            redis, config["provider_token"], parse_members(config.get("praxis_members", ""))
+        )
+    )
     protected = [Depends(weldall.require_auth({"scopes": ["mail:read"]}))]
     # ?lang=en picks the English data, anything else German. Folder values stay
     # German codes in both languages because the folder filter uses them.

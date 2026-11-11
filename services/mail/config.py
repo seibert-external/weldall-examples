@@ -28,4 +28,6 @@ def read_config():
             "public_jwk": json.loads(os.environ["MAIL_SIGNING_PUBLIC_JWK"]),
         },
         "provider_token": os.environ["DEMO_GROUP_PROVIDER_TOKEN"],
+        # Comma-separated emails in the praxis-demo group; empty means nobody.
+        "praxis_members": os.environ.get("PRAXIS_DEMO_MEMBERS", ""),
     }

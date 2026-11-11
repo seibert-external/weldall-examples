@@ -61,13 +61,13 @@ try {
   const httpsPort = local(["port", "caddy", "443"]).split(":").at(-1);
   for (const [origin, path] of [
     [values.WELDALL_ISSUER, "/.well-known/openid-configuration"],
-    ...["CONTRACTS", "CRM", "TICKETS", "WIKI", "MAIL"].map((name) => [values[`${name}_ORIGIN`], "/health"]),
+    ...["CONTRACTS", "CRM", "TICKETS", "WIKI", "MAIL", "PRAXIS"].map((name) => [values[`${name}_ORIGIN`], "/health"]),
   ]) {
     const host = new URL(origin).hostname;
     command("curl", ["--silent", "--show-error", "--fail", "--max-time", "10", "--cacert", root,
       "--noproxy", "*", "--resolve", `${host}:${httpsPort}:127.0.0.1`, `https://${host}:${httpsPort}${path}`]);
   }
-  console.log("PASS local Caddy: six mock hosts, HTTPS certificate verification, loopback ingress and bootstrap.");
+  console.log("PASS local Caddy: seven mock hosts, HTTPS certificate verification, loopback ingress and bootstrap.");
 
   local(["exec", "-T", "mail", "python", "-c",
     "import os,httpx; r=httpx.get(os.environ['WELDALL_ISSUER']+'/.well-known/openid-configuration'); r.raise_for_status()"]);
@@ -77,7 +77,7 @@ try {
     headers: { authorization: `Token ${values.DEMO_GROUP_PROVIDER_TOKEN}` },
   });
   assert.equal(group.status, 200);
-  assert.equal(group.body[0].ou, "demo-readers");
+  assert.deepEqual(group.body.map((g) => g.ou), ["demo-readers", "praxis-demo"]);
   console.log("PASS local trust: Python and Node trust Caddy; protected directory reachable over HTTPS.");
 
   for (const [service, origin, path, expected] of [
@@ -86,6 +86,7 @@ try {
     ["tickets", values.TICKETS_ORIGIN, "/api/tickets", 13],
     ["wiki", values.WIKI_ORIGIN, "/api/pages", 10],
     ["mail", values.MAIL_ORIGIN, "/api/messages", 12],
+    ["praxis", values.PRAXIS_ORIGIN, "/api/recall", 37],
   ]) {
     assert.equal(request(`${origin}${path}`).status, 401);
     const device = await generateEs256KeyPair();
@@ -114,7 +115,7 @@ try {
 } finally {
   if (environment) {
     spawnSync("docker", [...compose, "down", "--volumes", "--remove-orphans"], { cwd, env: environment, stdio: "ignore", timeout: 120_000 });
-    spawnSync("docker", ["image", "rm", ...["weldall", "contracts", "crm", "tickets", "wiki", "mail", "bootstrap"].map(service => `${project}-${service}`)], { stdio: "ignore", timeout: 120_000 });
+    spawnSync("docker", ["image", "rm", ...["weldall", "contracts", "crm", "tickets", "wiki", "mail", "praxis", "bootstrap"].map(service => `${project}-${service}`)], { stdio: "ignore", timeout: 120_000 });
   }
   await rm(directory, { recursive: true, force: true });
 }

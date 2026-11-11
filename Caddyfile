@@ -25,3 +25,7 @@ wiki.seibert.localdev {
 mail.seibert.localdev {
 	reverse_proxy mail:8000
 }
+
+praxis.seibert.localdev {
+	reverse_proxy praxis:3005
+}

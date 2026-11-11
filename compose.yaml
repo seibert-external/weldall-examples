@@ -160,6 +160,26 @@ services:
       timeout: 5s
       retries: 12
 
+  # Fictional dental practice for customer demos; only the praxis-demo group reads it.
+  praxis:
+    build: *node-build
+    command: [praxis]
+    restart: unless-stopped
+    depends_on: *needs-redis
+    environment:
+      WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
+      PRAXIS_ORIGIN: ${PRAXIS_ORIGIN:?Required}
+      PRAXIS_SIGNING_PRIVATE_JWK: ${PRAXIS_SIGNING_PRIVATE_JWK:?Required}
+      PRAXIS_SIGNING_PUBLIC_JWK: ${PRAXIS_SIGNING_PUBLIC_JWK:?Required}
+      PRAXIS_SIGNING_KID: ${PRAXIS_SIGNING_KID:?Required}
+      REDIS_URL: *redis-url
+    expose: ["3005"]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3005/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   # Python resource server; also the Token-authenticated group provider.
   mail:
     build:
@@ -174,6 +194,8 @@ services:
       MAIL_SIGNING_PUBLIC_JWK: ${MAIL_SIGNING_PUBLIC_JWK:?Required}
       MAIL_SIGNING_KID: ${MAIL_SIGNING_KID:?Required}
       DEMO_GROUP_PROVIDER_TOKEN: ${DEMO_GROUP_PROVIDER_TOKEN:?Required}
+      # Comma-separated emails that also get the praxis-demo group; empty: nobody.
+      PRAXIS_DEMO_MEMBERS: ${PRAXIS_DEMO_MEMBERS:-}
       REDIS_URL: *redis-url
     expose: ["8000"]
     healthcheck:
@@ -202,6 +224,8 @@ services:
         condition: service_healthy
       mail:
         condition: service_healthy
+      praxis:
+        condition: service_healthy
     environment:
       POSTGRES_URL: *database-url
       WELDALL_ISSUER: ${WELDALL_ISSUER:?Required}
@@ -210,6 +234,7 @@ services:
       TICKETS_ORIGIN: ${TICKETS_ORIGIN:?Required}
       WIKI_ORIGIN: ${WIKI_ORIGIN:?Required}
       MAIL_ORIGIN: ${MAIL_ORIGIN:?Required}
+      PRAXIS_ORIGIN: ${PRAXIS_ORIGIN:?Required}
       DEMO_GROUP_PROVIDER_TOKEN: ${DEMO_GROUP_PROVIDER_TOKEN:?Required}
       WELDALL_CREDENTIAL_ENCRYPTION_KEY: ${WELDALL_CREDENTIAL_ENCRYPTION_KEY:?Required}
 
