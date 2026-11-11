@@ -71,6 +71,7 @@ const SERVICES = [
   ["tickets", 3003, "/api/tickets", 13, "tickets"],
   ["wiki", 3004, "/api/pages", 10, "wiki"],
   ["mail", 8000, "/api/messages", 12, null],
+  ["praxis", 3005, "/api/recall", 37, "praxis"],
 ];
 try {
   const envFile = join(directory, ".env");

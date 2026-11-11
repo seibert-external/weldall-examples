@@ -11,6 +11,7 @@ const env = {
   TICKETS_ORIGIN: "https://tickets.weldall.example.com",
   WIKI_ORIGIN: "https://wiki.weldall.example.com",
   MAIL_ORIGIN: "https://mail.weldall.example.com",
+  PRAXIS_ORIGIN: "https://praxis.weldall.example.com",
   DEMO_GROUP_PROVIDER_TOKEN: randomBytes(32).toString("hex"),
   WELDALL_CREDENTIAL_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
 };
@@ -56,9 +57,10 @@ try {
       assert.equal(locks.length, 2, "seed must hold upstream configuration locks");
     }),
   }, env);
-  const firstAssignment = await db.groupScopeAssignment.findFirstOrThrow();
+  const readers = { where: { groupId: "demo-readers" } };
+  const firstAssignment = await db.groupScopeAssignment.findFirstOrThrow(readers);
   const catalogs = await db.discoveredSkillCatalog.findMany();
-  assert.equal(catalogs.length, 5, "first deploy schedules every skill catalog");
+  assert.equal(catalogs.length, 6, "first deploy schedules every skill catalog");
   assert.ok(catalogs.every(x => x.nextRefreshAt.getTime() <= Date.now()));
   const first = await db.downstreamResource.findMany({
     orderBy: { key: "asc" },
@@ -72,28 +74,28 @@ try {
     first.map((x) => x.id),
   );
   assert.deepEqual(second.map(x => x.version), first.map(x => x.version));
-  assert.equal((await db.groupScopeAssignment.findFirstOrThrow()).version, firstAssignment.version);
-  assert.equal(await db.discoveredSkillCatalog.count(), 5);
-  assert.equal(second.length, 5);
-  assert.equal(await db.scope.count(), 7);
+  assert.equal((await db.groupScopeAssignment.findFirstOrThrow(readers)).version, firstAssignment.version);
+  assert.equal(await db.discoveredSkillCatalog.count(), 6);
+  assert.equal(second.length, 6);
+  assert.equal(await db.scope.count(), 8);
   assert.equal(await db.groupProvider.count(), 1);
   assert.equal((await db.groupProvider.findFirstOrThrow()).baseUrl, env.MAIL_ORIGIN, "the mail service hosts the directory");
-  assert.equal(await db.groupScopeAssignment.count(), 1);
-  assert.equal(await db.resourceRequestPrefix.count(), 5);
-  assert.equal(await db.resourceScope.count(), 5);
-  const grants = await db.groupScopeGrant.findMany({
+  assert.equal(await db.groupScopeAssignment.count(), 2);
+  assert.equal(await db.resourceRequestPrefix.count(), 6);
+  assert.equal(await db.resourceScope.count(), 6);
+  const grantsOf = async (groupId) => (await db.groupScopeGrant.findMany({
+    where: { assignment: { groupId } },
     include: { scope: true },
-  });
-  assert.deepEqual(
-    grants.map((x) => x.scope.key).sort(),
-    [...DEMO_SCOPES].sort(),
-  );
+  })).map((x) => x.scope.key).sort();
+  assert.deepEqual(await grantsOf("demo-readers"), [...DEMO_SCOPES].sort());
+  assert.equal(DEMO_SCOPES.includes("praxis:read"), false, "the public group never reads the practice");
+  assert.deepEqual(await grantsOf("praxis-demo"), ["praxis:read"]);
   assert.equal(
     await db.emailScopeGrant.count({ where: { assignmentId: owner.id } }),
     2,
   );
   assert.equal(await db.emailScopeAssignment.count(), 1);
-  const assignment = await db.groupScopeAssignment.findFirstOrThrow();
+  const assignment = await db.groupScopeAssignment.findFirstOrThrow(readers);
   await db.groupScopeGrant.create({
     data: {
       assignmentId: assignment.id,
@@ -106,7 +108,7 @@ try {
     await db.groupScopeGrant.count({ where: { scopeId: admin.id } }),
     0,
   );
-  const reconciled = await db.groupScopeAssignment.findFirstOrThrow();
+  const reconciled = await db.groupScopeAssignment.findFirstOrThrow(readers);
   assert.equal(reconciled.version, assignment.version + 1);
   const staleWrite = await db.groupScopeAssignment.updateMany({
     where: { id: assignment.id, version: assignment.version },
@@ -114,7 +116,7 @@ try {
   });
   assert.equal(staleWrite.count, 0, "stale admin versions cannot overwrite reconciliation");
   await seedDemo(db, env);
-  assert.equal((await db.groupScopeAssignment.findFirstOrThrow()).version, reconciled.version);
+  assert.equal((await db.groupScopeAssignment.findFirstOrThrow(readers)).version, reconciled.version);
 
   await assert.rejects(seedDemo(db, { ...env, CONTRACTS_ORIGIN: "https://moved.example.com" }), /Resource identity changed/);
   assert.equal((await db.downstreamResource.findUniqueOrThrow({ where: { key: "contracts" } })).resourceIdentifier, `${env.CONTRACTS_ORIGIN}/api`);

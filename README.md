@@ -39,11 +39,12 @@ ticket names its contract, a mail points to its ticket, contract and deal.
 | `tickets` | Ticket system (TypeScript/Hono), 13 Jira-like tickets with SLA and history | HTTP API plus native MCP with an MCP App: ticket card and ticket list. |
 | `wiki` | Wiki (TypeScript/Hono), 10 Confluence-like pages in 4 spaces | HTTP API only. |
 | `mail` | Shared sales mailbox (Python/FastAPI), 12 messages | The Python SDK, and the group provider interface: the authorization server calls a Token-authenticated directory on this service to resolve group membership. |
+| `praxis` | Practice management of an invented dental practice in Brakenstedt (TypeScript/Hono): 140 patients with prophylaxis recall, an appointment book for three practitioners | HTTP API plus native MCP with an MCP App: recall cockpit, week plan, no-shows and patient card. For customer demos: only the `praxis-demo` group reads it, not `demo-readers`. |
 | `postgres` | Database | Stores users, grants, resources, skill catalogs and audit records. |
 | `redis` | Replay store | DPoP proofs are single-use. The APIs stop answering when Redis is unreachable. |
-| `bootstrap` | One-shot job that exits 0 | Registers resources, scopes and the `demo-readers` group in one transaction. The same changes are available in the admin UI. |
+| `bootstrap` | One-shot job that exits 0 | Registers resources, scopes and the `demo-readers` and `praxis-demo` groups in one transaction. The same changes are available in the admin UI. |
 
-The four Node services share one image (`services/node`); the container argument picks the service.
+The five Node services share one image (`services/node`); the container argument picks the service.
 
 The data exists in German and English with the same records, IDs, figures and dates. Every MCP tool
 takes `language` (`de` by default, `en`); the model passes the language the user writes in, and the
@@ -65,13 +66,14 @@ with 3:40 h left read the same on any day and at any hour.
 | `tickets` | `start-stoerungen` „Welche Störungen sind gerade kritisch?“ · `ticket-status` · `customer-tickets` |
 | `wiki` | `search` |
 | `mail` | `start-postfach` „Was ist heute im Vertriebspostfach wichtig?“ · `search` |
+| `praxis` | `start-recall` „Wen laden wir diese Woche zur Prophylaxe ein?“ · `start-luecken` „Wo sind nächste Woche noch Lücken im Kalender?“ · `start-ausfaelle` „An welchen Tagen fallen die meisten Termine aus?“ · `patient` |
 
 Start skills carry the tag `start`; their title is the prompt to try.
 
 ## MCP Apps
 
-`contracts`, `crm` and `tickets` serve native MCP at `/api/mcp` with one view each
-(`ui://weldall/contracts`, `ui://weldall/pipeline`, `ui://weldall/tickets`). The view HTML is a
+`contracts`, `crm`, `tickets` and `praxis` serve native MCP at `/api/mcp` with one view each
+(`ui://weldall/contracts`, `ui://weldall/pipeline`, `ui://weldall/tickets`, `ui://weldall/praxis`). The view HTML is a
 static shell; records arrive with the tool result, so the HTML never carries data. The browser code in
 `services/node/view` is public, plain ES modules from the resource's own origin (no CDN, no build
 step, no `fetch`): `connectDomains` stays empty. Charts and gauges are
@@ -99,11 +101,13 @@ npx github:seibert-external/weldall-app-devhost --target http://localhost:4101/d
    not overwrite an existing file. An existing deployment keeps its keys: compare it with
    `.env.example`, generate a scratch file in another checkout and copy over only the variables it lacks.
    Compose stops with `Required` on any that are missing.
-2. Set `WELDALL_ISSUER`, `CONTRACTS_ORIGIN`, `CRM_ORIGIN`, `TICKETS_ORIGIN`, `WIKI_ORIGIN` and
-   `MAIL_ORIGIN` to six distinct HTTPS origins without a trailing slash.
+2. Set `WELDALL_ISSUER`, `CONTRACTS_ORIGIN`, `CRM_ORIGIN`, `TICKETS_ORIGIN`, `WIKI_ORIGIN`,
+   `MAIL_ORIGIN` and `PRAXIS_ORIGIN` to seven distinct HTTPS origins without a trailing slash.
+   `PRAXIS_DEMO_MEMBERS` lists the emails that may read the dental practice (comma-separated;
+   empty: nobody).
 3. Deploy `compose.yaml`. In Coolify: build pack *Docker Compose*, compose location `/compose.yaml`,
-   domains on `weldall:3000`, `contracts:3001`, `crm:8000`, `tickets:3003`, `wiki:3004` and
-   `mail:8000`. `postgres`, `redis` and `bootstrap` belong to this Compose project; they need neither
+   domains on `weldall:3000`, `contracts:3001`, `crm:8000`, `tickets:3003`, `wiki:3004`,
+   `mail:8000` and `praxis:3005`. `postgres`, `redis` and `bootstrap` belong to this Compose project; they need neither
    a domain nor a separate database resource.
 4. Open `https://<WELDALL_ISSUER>/setup` and register an OIDC provider. The form displays the
    callback URL to register with the provider. Authorization answers `503` until this step is done.
@@ -120,7 +124,7 @@ Before the demo is open to everyone, publish the privacy notice and retention po
 - Signing keys, both encryption keys, the PostgreSQL volume and the Redis volume stay unchanged
   across deployments.
 - Back up PostgreSQL and Redis together. Losing replay history makes already-used proofs reusable.
-- The `demo-readers` group maps every verified email to read-only access on all five APIs. It is an
+- The `demo-readers` group maps every verified email to read-only access on the five company APIs; the dental practice is limited to `PRAXIS_DEMO_MEMBERS`. It is an
   example policy, not an identity check. Publish the privacy notice and retention policy first
   ([German](docs/datenschutz.md), [English](docs/privacy.md)).
 - Deleting the application resource in Coolify runs `docker compose down -v` and removes all state.

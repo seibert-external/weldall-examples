@@ -10,6 +10,7 @@ export function generateEnv(template, { local = false } = {}) {
     TICKETS_ORIGIN: "https://tickets.seibert.localdev",
     WIKI_ORIGIN: "https://wiki.seibert.localdev",
     MAIL_ORIGIN: "https://mail.seibert.localdev",
+    PRAXIS_ORIGIN: "https://praxis.seibert.localdev",
   } : {};
   const values = {};
   for (const name of [
@@ -23,7 +24,7 @@ export function generateEnv(template, { local = false } = {}) {
   values.WELDALL_CONNECTOR_KEK = randomBytes(32).toString("base64");
   // Upstream requires base64url from at least 32 random bytes (43-128 characters).
   values.WELDALL_SETUP_TOKEN = randomBytes(32).toString("base64url");
-  for (const service of ["WELDALL", "CONTRACTS", "CRM", "TICKETS", "WIKI", "MAIL"]) {
+  for (const service of ["WELDALL", "CONTRACTS", "CRM", "TICKETS", "WIKI", "MAIL", "PRAXIS"]) {
     const pair = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
     values[`${service}_SIGNING_KID`] = `${service.toLowerCase()}-demo-1`;
     values[`${service}_SIGNING_PRIVATE_JWK`] = JSON.stringify(

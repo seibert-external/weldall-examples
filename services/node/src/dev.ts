@@ -6,13 +6,14 @@ import { serve } from "@hono/node-server";
 import { generateEs256KeyPair, inMemory } from "@weldall/sdk";
 import { createApp as contracts } from "./contracts/app.js";
 import { createApp as crm } from "./crm/app.js";
+import { createApp as praxis } from "./praxis/app.js";
 import { createApp as tickets } from "./tickets/app.js";
 import { createApp as wiki } from "./wiki/app.js";
 
 if (process.env.NODE_ENV !== "development" || process.env.WELDALL_DEV_MCP !== "1")
   throw new Error("Set NODE_ENV=development and WELDALL_DEV_MCP=1");
 
-const services = { contracts: [contracts, 4101], crm: [crm, 4102], tickets: [tickets, 4103], wiki: [wiki, 4104] } as const;
+const services = { contracts: [contracts, 4101], crm: [crm, 4102], tickets: [tickets, 4103], wiki: [wiki, 4104], praxis: [praxis, 4105] } as const;
 for (const [name, [create, port]] of Object.entries(services)) {
   const origin = `http://localhost:${port}`;
   const key = await generateEs256KeyPair();

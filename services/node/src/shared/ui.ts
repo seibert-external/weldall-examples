@@ -27,7 +27,7 @@ const TYPES: Record<string, string> = {
  * One view per service: kit.js/kit.css are shared, `<name>.js/.css` are the view.
  * A content hash in every URL keeps hosts from mixing old and new assets.
  */
-export function viewAssets(origin: string, name: string) {
+export function viewAssets(origin: string, name: string, brand = "Brakenstedt") {
   const load = () => {
     const files: Record<string, string> = {
       "sdk.js": browserSdk,
@@ -76,7 +76,7 @@ export function viewAssets(origin: string, name: string) {
         render: () =>
           `<main id="app" data-view="${escapeMcpAppText(name)}">` +
           `<header class="bar"><img class="brand" src="${url("brand.svg")}" alt="" width="22" height="22">` +
-          `<span class="bar-name">Brakenstedt</span>` +
+          `<span class="bar-name">${escapeMcpAppText(brand)}</span>` +
           `<span class="bar-title">${escapeMcpAppText(options.title)}</span></header>` +
           `<p class="shell-note">${escapeMcpAppText(options.fallback)}</p></main>`,
       });

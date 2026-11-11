@@ -1,6 +1,7 @@
 import { createCipheriv, randomBytes } from "node:crypto";
 
-// The public group reads every demo system; never administration or IaC.
+// The public group reads every company demo system, not the dental practice;
+// never administration or IaC.
 export const DEMO_SCOPES = ["weldall:login", "contracts:read", "crm:read", "tickets:read", "wiki:read", "mail:read"];
 export const DEMO_SERVICES = [
   { key: "contracts", name: "Vertragsregister", env: "CONTRACTS_ORIGIN" },
@@ -9,6 +10,13 @@ export const DEMO_SERVICES = [
   { key: "wiki", name: "Wiki", env: "WIKI_ORIGIN" },
   // Also serves the Token-authenticated group directory.
   { key: "mail", name: "Postfach", env: "MAIL_ORIGIN", groupProvider: true },
+  // Customer demos only: readable by the praxis-demo group, not by demo-readers.
+  { key: "praxis", name: "Praxisverwaltung", env: "PRAXIS_ORIGIN" },
+];
+// Groups from the demo directory and the scopes each one gets.
+export const DEMO_GROUPS = [
+  { id: "demo-readers", scopes: DEMO_SCOPES },
+  { id: "praxis-demo", scopes: ["praxis:read"] },
 ];
 const actor = "weldall-demo-bootstrap";
 
@@ -79,10 +87,6 @@ export async function seedDemo(db, env) {
     // Match upstream domain/configuration.ts: admin/IaC and seed share this order.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(49350618)`;
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(49350617)`;
-    const login = await tx.scope.findUniqueOrThrow({
-      where: { key: "weldall:login" },
-    });
-    const scopeIds = [login.id];
     for (const service of services) {
       assertOwned(
         await tx.scope.findUnique({ where: { key: service.scope } }),
@@ -98,7 +102,6 @@ export async function seedDemo(db, env) {
         },
         update: {},
       });
-      scopeIds.push(scope.id);
       const current = await tx.downstreamResource.findUnique({
         where: { key: service.key },
         include: { scopes: true, requestPrefixes: true },
@@ -211,38 +214,39 @@ export async function seedDemo(db, env) {
         updatedBy: actor,
       },
     });
-    const groupWhere = {
-      providerId_groupId: { providerId, groupId: "demo-readers" },
-    };
-    const currentAssignment = await tx.groupScopeAssignment.findUnique({
-      where: groupWhere,
-      include: { grants: true },
-    });
-    assertOwned(currentAssignment, "demo-readers assignment");
-    const grantsChanged = currentAssignment &&
-      (currentAssignment.grants.length !== scopeIds.length ||
-        currentAssignment.grants.some(({ scopeId }) => !scopeIds.includes(scopeId)));
-    const assignment = await tx.groupScopeAssignment.upsert({
-      where: groupWhere,
-      create: {
-        providerId,
-        groupId: "demo-readers",
-        createdBy: actor,
-        updatedBy: actor,
-      },
-      update: grantsChanged ? { version: { increment: 1 }, updatedBy: actor } : {},
-    });
-    // Exactly DEMO_SCOPES, never administration or IaC. No email grants touched.
-    await tx.groupScopeGrant.deleteMany({
-      where: { assignmentId: assignment.id, scopeId: { notIn: scopeIds } },
-    });
-    for (const scopeId of scopeIds)
-      await tx.groupScopeGrant.upsert({
-        where: {
-          assignmentId_scopeId: { assignmentId: assignment.id, scopeId },
-        },
-        create: { assignmentId: assignment.id, scopeId, createdBy: actor },
-        update: {},
-      });
+    for (const group of DEMO_GROUPS) {
+      const ids = [];
+      for (const key of group.scopes)
+        ids.push((await tx.scope.findUniqueOrThrow({ where: { key } })).id);
+      await assignGroup(tx, providerId, group.id, ids);
+    }
   });
+}
+
+// Grants exactly `scopeIds` to one directory group, never administration or IaC.
+// No email grants touched.
+async function assignGroup(tx, providerId, groupId, scopeIds) {
+  const groupWhere = { providerId_groupId: { providerId, groupId } };
+  const currentAssignment = await tx.groupScopeAssignment.findUnique({
+    where: groupWhere,
+    include: { grants: true },
+  });
+  assertOwned(currentAssignment, `${groupId} assignment`);
+  const grantsChanged = currentAssignment &&
+    (currentAssignment.grants.length !== scopeIds.length ||
+      currentAssignment.grants.some(({ scopeId }) => !scopeIds.includes(scopeId)));
+  const assignment = await tx.groupScopeAssignment.upsert({
+    where: groupWhere,
+    create: { providerId, groupId, createdBy: actor, updatedBy: actor },
+    update: grantsChanged ? { version: { increment: 1 }, updatedBy: actor } : {},
+  });
+  await tx.groupScopeGrant.deleteMany({
+    where: { assignmentId: assignment.id, scopeId: { notIn: scopeIds } },
+  });
+  for (const scopeId of scopeIds)
+    await tx.groupScopeGrant.upsert({
+      where: { assignmentId_scopeId: { assignmentId: assignment.id, scopeId } },
+      create: { assignmentId: assignment.id, scopeId, createdBy: actor },
+      update: {},
+    });
 }

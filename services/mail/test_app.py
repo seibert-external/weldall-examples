@@ -205,7 +205,8 @@ def test_provider_is_separate_token_authenticated_and_grants_only_readers(fixtur
         == 401
     )
     assert client.get("/api/messages", headers=auth).status_code == 401
-    assert client.get("/api/management/groups/", headers=auth).json()[0]["ou"] == "demo-readers"
+    groups = client.get("/api/management/groups/", headers=auth).json()
+    assert [g["ou"] for g in groups] == ["demo-readers", "praxis-demo"]
     for email in [
         "visitor@example.com",
         "a" * 64 + "@" + ".".join(["b" * 60, "c" * 60, "d" * 55, "com"]),
@@ -224,6 +225,37 @@ def test_provider_is_separate_token_authenticated_and_grants_only_readers(fixtur
         client.get("/api/management/users/", params={"mail": "invalid"}, headers=auth).json() == []
     )
     assert client.get("/api/management/users/not-valid/", headers=auth).status_code == 404
+
+
+def test_praxis_group_only_for_listed_members():
+    redis = MemoryRedis()
+    key = generate_es256_key_pair()
+    app = create_app(
+        {
+            "issuer": "https://weldall.example.com",
+            "origin": ORIGIN,
+            "signing_key": {"kid": "test", **key},
+            "provider_token": TOKEN,
+            "praxis_members": " Member@Example.com , second@example.com",
+        },
+        redis,
+    )
+    client = TestClient(app, base_url="http://internal:8000")
+    auth = {"authorization": f"Token {TOKEN}"}
+
+    def groups_of(email):
+        user = client.get("/api/management/users/", params={"mail": email}, headers=auth).json()[0]
+        return client.get(f"/api/management/users/{user['username']}/", headers=auth).json()[
+            "groups"
+        ]
+
+    assert groups_of("member@example.com") == ["demo-readers", "praxis-demo"]
+    assert groups_of("visitor@example.com") == ["demo-readers"]
+    assert (
+        client.get("/api/management/groups/praxis-demo/", headers=auth).json()["ou"]
+        == "praxis-demo"
+    )
+    assert client.get("/api/management/groups/other/", headers=auth).status_code == 404
 
 
 def test_replay_expiry_concurrency_and_outage_fail_closed(fixture):
