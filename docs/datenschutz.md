@@ -4,7 +4,7 @@ Stand: November 2026.
 
 ## Worum es geht
 
-Die Demo zeigt Weldall mit den Systemen einer erfundenen Firma (Brakenstedt Antriebstechnik GmbH). Alle Firmen, Personen, Verträge, Tickets, Wiki-Seiten und E-Mails darin sind erfunden; Ähnlichkeiten mit echten Firmen oder Personen sind nicht beabsichtigt. Die Demo ist nur lesend und ruft keine Sprachmodelle auf. Was Sie im Chat schreiben, bleibt in Ihrem Client und bei dem Modellanbieter, den Ihr Client nutzt; die Demo erhält nur die Abfragen, die der Agent an ihre Schnittstellen schickt.
+Die Demo zeigt Weldall mit den Systemen einer erfundenen Firma (Brakenstedt Antriebstechnik GmbH). Für Kundendemos gibt es zusätzlich eine erfundene Zahnarztpraxis, die nur freigeschaltete Konten sehen. Alle Firmen, Personen, Patienten, Termine, Verträge, Tickets, Wiki-Seiten und E-Mails darin sind erfunden; Ähnlichkeiten mit echten Firmen oder Personen sind nicht beabsichtigt. Die Demo ist nur lesend und ruft keine Sprachmodelle auf. Was Sie im Chat schreiben, bleibt in Ihrem Client und bei dem Modellanbieter, den Ihr Client nutzt; die Demo erhält nur die Abfragen, die der Agent an ihre Schnittstellen schickt.
 
 Verantwortlich: Seibert Group GmbH, Luisenstraße 37-39, 65185 Wiesbaden. Kontakt Datenschutz: datenschutz@seibert.group, Datenschutzbeauftragter: dsb@seibert.group.
 
@@ -22,7 +22,7 @@ Die Anmeldung läuft über Ihr Konto beim Seibert Customer Login (customer.seibe
 
 Tokens des Anmeldeanbieters speichert die Demo nicht.
 
-Die Demo-Schnittstellen (Verträge, CRM, Tickets, Wiki, Postfach) speichern keine Abfragen und schreiben keine Zugriffsprotokolle. Kurzlebig gespeichert werden:
+Die Demo-Schnittstellen (Verträge, CRM, Tickets, Wiki, Postfach, Praxis) speichern keine Abfragen und schreiben keine Zugriffsprotokolle. Kurzlebig gespeichert werden:
 
 - ein Hashwert jedes Sicherheitsnachweises (DPoP-Proof) bis zu dessen Ablauf, gegen Wiederverwendung (Minuten);
 - beim Prüfen der Gruppenzugehörigkeit Ihre E-Mail-Adresse für 5 Minuten, unter einem Hashwert der Adresse.
